@@ -1,17 +1,10 @@
-# movielog
+# MovieLog
 
-A new Flutter project.
+영화의 순간을 기록하는 Flutter 애플리케이션입니다.
 
-## Getting Started
+## 0주차 구현 내용
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- MovieLog 시작 화면 구현
+- 영화 아이콘, 제목, 설명 배치
+- 시작하기 버튼 구현
+- flutter analyze 검사 완료
