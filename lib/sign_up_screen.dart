@@ -10,6 +10,9 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
+  // build 밖에서 유지하는 Form 상태 접근 키
+  final _formKey = GlobalKey<FormState>();
+
   final _nicknameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -23,15 +26,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _passwordTouched = false;
   bool _agreedToTerms = false;
 
-  String? get _nicknameError {
-    if (_nicknameController.text.trim().characters.length < 2) {
+  String? _validateNickname(String? value) {
+    if ((value ?? '').trim().characters.length < 2) {
       return '닉네임은 2자 이상이어야 합니다.';
     }
     return null;
   }
 
-  String? get _emailError {
-    final email = _emailController.text.trim();
+  String? _validateEmail(String? value) {
+    final email = (value ?? '').trim();
     final pattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
     if (!pattern.hasMatch(email)) {
@@ -40,17 +43,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return null;
   }
 
-  String? get _passwordError {
-    if (_passwordController.text.characters.length < 8) {
+  String? _validatePassword(String? value) {
+    if ((value ?? '').characters.length < 8) {
       return '비밀번호는 8자 이상이어야 합니다.';
     }
     return null;
   }
 
   bool get _canSubmit =>
-      _nicknameError == null &&
-      _emailError == null &&
-      _passwordError == null &&
+      _validateNickname(_nicknameController.text) == null &&
+      _validateEmail(_emailController.text) == null &&
+      _validatePassword(_passwordController.text) == null &&
       _agreedToTerms;
 
   @override
@@ -98,7 +101,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   void _submit() {
-    if (!_canSubmit) return;
+    // Form 안의 모든 TextFormField.validator를 실행해.
+    final isValid = _formKey.currentState?.validate() ?? false;
+    if (!isValid || !_agreedToTerms) return;
 
     FocusScope.of(context).unfocus();
 
@@ -130,135 +135,121 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
       ),
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: IntrinsicHeight(
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 480),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-                        child: AutofillGroup(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Text(
-                                '환영합니다!\n간단한 정보만 입력하고 시작해보세요.',
-                                textAlign: TextAlign.center,
-                                style: textTheme.bodyMedium?.copyWith(
-                                  height: 1.7,
-                                ),
-                              ),
-
-                              const SizedBox(height: 52),
-
-                              _ValidatedField(
-                                label: '닉네임',
-                                hintText: '닉네임을 입력해주세요',
-                                controller: _nicknameController,
-                                focusNode: _nicknameFocus,
-                                touched: _nicknameTouched,
-                                errorText: _nicknameError,
-                                autofillHints: const [AutofillHints.nickname],
-                                onChanged: (_) {
-                                  setState(() => _nicknameTouched = true);
-                                },
-                                onSubmitted: (_) {
-                                  _emailFocus.requestFocus();
-                                },
-                              ),
-
-                              const SizedBox(height: 24),
-
-                              _ValidatedField(
-                                label: '이메일',
-                                hintText: '이메일 주소를 입력해주세요',
-                                controller: _emailController,
-                                focusNode: _emailFocus,
-                                touched: _emailTouched,
-                                errorText: _emailError,
-                                keyboardType: TextInputType.emailAddress,
-                                autofillHints: const [AutofillHints.email],
-                                onChanged: (_) {
-                                  setState(() => _emailTouched = true);
-                                },
-                                onSubmitted: (_) {
-                                  _passwordFocus.requestFocus();
-                                },
-                              ),
-
-                              const SizedBox(height: 24),
-
-                              _ValidatedField(
-                                label: '비밀번호',
-                                hintText: '비밀번호를 입력해주세요',
-                                controller: _passwordController,
-                                focusNode: _passwordFocus,
-                                touched: _passwordTouched,
-                                errorText: _passwordError,
-                                obscureText: true,
-                                textInputAction: TextInputAction.done,
-                                autofillHints: const [
-                                  AutofillHints.newPassword,
-                                ],
-                                onChanged: (_) {
-                                  setState(() => _passwordTouched = true);
-                                },
-                                onSubmitted: (_) {
-                                  _passwordFocus.unfocus();
-                                },
-                              ),
-
-                              const SizedBox(height: 48),
-
-                              // 남는 높이를 차지해서 버튼 영역을 아래로 배치해.
-                              const Spacer(),
-
-                              _TermsAgreement(
-                                value: _agreedToTerms,
-                                onChanged: (value) {
-                                  setState(() => _agreedToTerms = value);
-                                },
-                              ),
-
-                              const SizedBox(height: 16),
-
-                              ElevatedButton(
-                                onPressed: _canSubmit ? _submit : null,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  foregroundColor: AppColors.onPrimary,
-                                  disabledBackgroundColor:
-                                      _SignUpColors.disabledButton,
-                                  disabledForegroundColor: Colors.white,
-                                  minimumSize: const Size(double.infinity, 56),
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  textStyle: textTheme.titleMedium,
-                                ),
-                                child: const Text('가입하기'),
-                              ),
-
-                              const SizedBox(height: 32),
-
-                              const _LoginPrompt(),
-                            ],
-                          ),
-                        ),
+        child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              // 너비만 제한하고 높이는 오류 문구를 포함한 내용에 맞춰 늘어나게 해.
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: AutofillGroup(
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        '환영합니다!\n간단한 정보만 입력하고 시작해보세요.',
+                        textAlign: TextAlign.center,
+                        style: textTheme.bodyMedium?.copyWith(height: 1.7),
                       ),
-                    ),
+
+                      const SizedBox(height: 52),
+
+                      _ValidatedField(
+                        label: '닉네임',
+                        hintText: '닉네임을 입력해주세요',
+                        controller: _nicknameController,
+                        focusNode: _nicknameFocus,
+                        touched: _nicknameTouched,
+                        validator: _validateNickname,
+                        autofillHints: const [AutofillHints.nickname],
+                        onChanged: (_) {
+                          setState(() => _nicknameTouched = true);
+                        },
+                        onSubmitted: (_) {
+                          _emailFocus.requestFocus();
+                        },
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      _ValidatedField(
+                        label: '이메일',
+                        hintText: '이메일 주소를 입력해주세요',
+                        controller: _emailController,
+                        focusNode: _emailFocus,
+                        touched: _emailTouched,
+                        validator: _validateEmail,
+                        keyboardType: TextInputType.emailAddress,
+                        autofillHints: const [AutofillHints.email],
+                        onChanged: (_) {
+                          setState(() => _emailTouched = true);
+                        },
+                        onSubmitted: (_) {
+                          _passwordFocus.requestFocus();
+                        },
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      _ValidatedField(
+                        label: '비밀번호',
+                        hintText: '비밀번호를 입력해주세요',
+                        controller: _passwordController,
+                        focusNode: _passwordFocus,
+                        touched: _passwordTouched,
+                        validator: _validatePassword,
+                        obscureText: true,
+                        textInputAction: TextInputAction.done,
+                        autofillHints: const [AutofillHints.newPassword],
+                        onChanged: (_) {
+                          setState(() => _passwordTouched = true);
+                        },
+                        onSubmitted: (_) {
+                          _passwordFocus.unfocus();
+                        },
+                      ),
+
+                      const SizedBox(height: 48),
+
+                      _TermsAgreement(
+                        value: _agreedToTerms,
+                        onChanged: (value) {
+                          setState(() => _agreedToTerms = value);
+                        },
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      ElevatedButton(
+                        onPressed: _canSubmit ? _submit : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: AppColors.onPrimary,
+                          disabledBackgroundColor: _SignUpColors.disabledButton,
+                          disabledForegroundColor: Colors.white,
+                          minimumSize: const Size(double.infinity, 56),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          textStyle: textTheme.titleMedium,
+                        ),
+                        child: const Text('가입하기'),
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      const _LoginPrompt(),
+                    ],
                   ),
                 ),
               ),
-            );
-          },
+            ),
+          ),
         ),
       ),
     );
@@ -281,7 +272,7 @@ class _ValidatedField extends StatelessWidget {
     required this.controller,
     required this.focusNode,
     required this.touched,
-    required this.errorText,
+    required this.validator,
     required this.onChanged,
     required this.onSubmitted,
     this.keyboardType = TextInputType.text,
@@ -295,7 +286,7 @@ class _ValidatedField extends StatelessWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
   final bool touched;
-  final String? errorText;
+  final FormFieldValidator<String> validator;
   final ValueChanged<String> onChanged;
   final ValueChanged<String> onSubmitted;
   final TextInputType keyboardType;
@@ -306,6 +297,8 @@ class _ValidatedField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    // 아이콘과 배경도 동일한 검사 규칙을 사용해.
+    final errorText = validator(controller.text);
     final hasError = touched && errorText != null;
     final isValid = touched && errorText == null;
 
@@ -323,11 +316,16 @@ class _ValidatedField extends StatelessWidget {
 
         const SizedBox(height: 8),
 
-        TextField(
+        TextFormField(
+          validator: validator,
+          // 입력하거나 포커스를 잃은 항목만 실시간으로 검사해.
+          autovalidateMode: touched
+              ? AutovalidateMode.always
+              : AutovalidateMode.disabled,
           controller: controller,
           focusNode: focusNode,
           onChanged: onChanged,
-          onSubmitted: onSubmitted,
+          onFieldSubmitted: onSubmitted,
           keyboardType: keyboardType,
           textInputAction: textInputAction,
           obscureText: obscureText,
@@ -351,7 +349,6 @@ class _ValidatedField extends StatelessWidget {
             focusedBorder: border(AppColors.primary),
             errorBorder: border(_SignUpColors.error),
             focusedErrorBorder: border(_SignUpColors.error),
-            errorText: hasError ? errorText : null,
             errorMaxLines: 2,
             errorStyle: textTheme.bodySmall?.copyWith(
               color: _SignUpColors.error,
