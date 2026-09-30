@@ -5,14 +5,16 @@ import 'mock_movies.dart';
 import 'movie_card.dart';
 
 class MoviesScreen extends StatefulWidget {
-  const MoviesScreen({super.key});
+  const MoviesScreen({super.key, this.genre = '전체'});
+  final String genre;
 
   @override
   State<MoviesScreen> createState() => _MoviesScreenState();
 }
 
 class _MoviesScreenState extends State<MoviesScreen> {
-  String _genre = '전체';
+  // 주소의 장르가 유효하지 않으면 전체 목록을 표시합니다.
+  String get _genre => movieGenres.contains(widget.genre) ? widget.genre : '전체';
   MovieSort _sort = MovieSort.original;
   bool _searching = false;
   final _searchController = TextEditingController();
@@ -93,7 +95,13 @@ class _MoviesScreenState extends State<MoviesScreen> {
         ),
         MovieGenreFilter(
           selected: _genre,
-          onSelected: (genre) => setState(() => _genre = genre),
+          onSelected: (genre) {
+            final uri = Uri(
+              path: '/movies',
+              queryParameters: genre == '전체' ? null : {'genre': genre},
+            );
+            context.go(uri.toString());
+          },
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -126,7 +134,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
                 itemCount: movies.length,
                 itemBuilder: (context, index) => MovieCard(
                   movie: movies[index],
-                  onTap: () => context.push('/movies/${movies[index].id}'),
+                  onTap: () => context.push('/movies/${movies[index].id}', extra: movies[index]),
                 ),
               );
             }),
@@ -215,3 +223,4 @@ class MovieGenreFilter extends StatelessWidget {
     );
   }
 }
+

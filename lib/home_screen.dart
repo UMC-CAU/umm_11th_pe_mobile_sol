@@ -10,7 +10,7 @@ class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   void _openDetail(BuildContext context) {
-    context.push('/movies/${featuredMovie.id}');
+    context.push('/movies/${featuredMovie.id}', extra: featuredMovie);
   }
 
   @override
@@ -57,7 +57,7 @@ class HomeScreen extends StatelessWidget {
                         width: 220,
                         child: MovieCard(
                           movie: movie,
-                          onTap: () => context.push('/movies/${movie.id}'),
+                          onTap: () => context.push('/movies/${movie.id}', extra: movie),
                         ),
                       );
                     },
@@ -183,4 +183,5 @@ class SectionHeading extends StatelessWidget {
     );
   }
 }
+
 

@@ -4,6 +4,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import 'profile_screen.dart';
+import 'mock_movies.dart';
+import 'movies_screen.dart';
 import 'home_screen.dart';
 import 'movie_detail_screen.dart';
 import 'main_tab_screen.dart';
@@ -24,7 +26,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/movies/:movieId',
       builder: (context, state) =>
-          MovieDetailScreen(movieId: state.pathParameters['movieId']!),
+          MovieDetailScreen(
+            movieId: state.pathParameters['movieId']!,
+            initialMovie: state.extra is Movie ? state.extra as Movie : null,
+          ),
     ),
     ShellRoute(
       builder: (context, state, child) =>
@@ -33,7 +38,9 @@ final appRouter = GoRouter(
         GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
         GoRoute(
           path: '/movies',
-          builder: (context, state) => const MoviesPlaceholderScreen(),
+          builder: (context, state) => MoviesScreen(
+            genre: state.uri.queryParameters['genre'] ?? '전체',
+          ),
         ),
         GoRoute(
           path: '/my',
@@ -230,3 +237,4 @@ class StartScreen extends StatelessWidget {
     );
   }
 }
+

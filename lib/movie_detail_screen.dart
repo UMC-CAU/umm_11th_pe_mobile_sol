@@ -7,7 +7,8 @@ import 'movie_poster.dart';
 import 'movie_rating_input.dart';
 
 class MovieDetailScreen extends StatefulWidget {
-  const MovieDetailScreen({super.key, required this.movieId});
+  const MovieDetailScreen({super.key, required this.movieId, this.initialMovie});
+  final Movie? initialMovie;
   final String movieId;
   @override
   State<MovieDetailScreen> createState() => _MovieDetailScreenState();
@@ -53,7 +54,11 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final movie = findMovieById(widget.movieId);
+    // Extra가 없거나 경로 ID와 다르면 공통 Mock 목록에서 다시 찾습니다.
+    final passedMovie = widget.initialMovie;
+    final movie = passedMovie != null && passedMovie.id == widget.movieId
+        ? passedMovie
+        : findMovieById(widget.movieId);
     final theme = Theme.of(context);
     final hasPrevious = context.canPop();
     return PopScope(
@@ -143,3 +148,4 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     );
   }
 }
+
