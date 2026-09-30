@@ -3,8 +3,34 @@ import 'package:flutter/material.dart';
 import 'app_colors.dart';
 import 'common_app_bar.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  String _name = '무비러버';
+  String _introduction = '매주 주말엔 영화관으로 출근하는 프로 관람객. '
+      '좋은 영화를 보고 기록하는 것을 좋아합니다.';
+
+  Future<void> _editProfile() async {
+    final result = await showModalBottomSheet<Map<String, String>>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => ProfileEditSheet(name: _name, introduction: _introduction),
+    );
+    if (!mounted || result == null) return;
+    setState(() {
+      _name = result['name']!;
+      _introduction = result['introduction']!;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('프로필을 수정했어요.')),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,22 +49,13 @@ class ProfileScreen extends StatelessWidget {
                 // 교차축: 가로 방향으로 영역을 채움
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const ProfileHeader(
-                    name: '무비러버',
-                    introduction:
-                        '매주 주말엔 영화관으로 출근하는 프로 관람객. '
-                        '좋은 영화를 보고 기록하는 것을 좋아합니다.',
-                  ),
+                  ProfileHeader(name: _name, introduction: _introduction),
 
                   const SizedBox(height: 28),
 
                   Center(
                     child: TextButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('프로필 수정 기능은 준비 중입니다.')),
-                        );
-                      },
+                      onPressed: _editProfile,
                       child: const Text('프로필 수정'),
                     ),
                   ),
@@ -229,6 +246,88 @@ class GenreChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       labelStyle: Theme.of(context).textTheme.labelLarge
           ?.copyWith(color: AppColors.statisticValue),
+    );
+  }
+}
+
+// 프로필 편집값은 화면 내부 상태로만 유지합니다.
+class ProfileEditSheet extends StatefulWidget {
+  const ProfileEditSheet({super.key, required this.name, required this.introduction});
+  final String name;
+  final String introduction;
+
+  @override
+  State<ProfileEditSheet> createState() => _ProfileEditSheetState();
+}
+
+class _ProfileEditSheetState extends State<ProfileEditSheet> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameController;
+  late final TextEditingController _introductionController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.name);
+    _introductionController = TextEditingController(text: widget.introduction);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _introductionController.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    Navigator.of(context).pop(<String, String>{
+      'name': _nameController.text.trim(),
+      'introduction': _introductionController.text.trim(),
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('프로필 수정', style: Theme.of(context).textTheme.headlineSmall),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(labelText: '닉네임'),
+                  textInputAction: TextInputAction.next,
+                  validator: (value) => (value ?? '').trim().characters.length < 2
+                      ? '닉네임은 2자 이상이어야 합니다.' : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _introductionController,
+                  decoration: const InputDecoration(labelText: '자기소개'),
+                  minLines: 2,
+                  maxLines: 4,
+                ),
+                const SizedBox(height: 24),
+                FilledButton(onPressed: _save, child: const Text('저장')),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('취소'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

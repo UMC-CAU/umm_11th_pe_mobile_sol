@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import 'package:go_router/go_router.dart';
+
 import 'profile_screen.dart';
+import 'home_screen.dart';
+import 'movie_detail_screen.dart';
+import 'main_tab_screen.dart';
 import 'sign_up_screen.dart';
 import 'app_colors.dart';
 import 'common_app_bar.dart';
@@ -10,13 +15,42 @@ void main() {
   runApp(const MovieLogApp());
 }
 
+// 화면 경로. 로그인은 인증 없이 홈으로 이동하는 Mock 동작입니다.
+final appRouter = GoRouter(
+  initialLocation: '/',
+  routes: [
+    GoRoute(path: '/', builder: (context, state) => const StartScreen()),
+    GoRoute(path: '/signup', builder: (context, state) => const SignUpScreen()),
+    GoRoute(
+      path: '/movies/:movieId',
+      builder: (context, state) =>
+          MovieDetailScreen(movieId: state.pathParameters['movieId']!),
+    ),
+    ShellRoute(
+      builder: (context, state, child) =>
+          MainTabScreen(location: state.uri.path, child: child),
+      routes: [
+        GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+        GoRoute(
+          path: '/movies',
+          builder: (context, state) => const MoviesPlaceholderScreen(),
+        ),
+        GoRoute(
+          path: '/my',
+          builder: (context, state) => const ProfileScreen(),
+        ),
+      ],
+    ),
+  ],
+);
+
 // 앱 전체 설정
 class MovieLogApp extends StatelessWidget {
   const MovieLogApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: 'MovieLog',
       theme: ThemeData(
@@ -109,7 +143,7 @@ class MovieLogApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const StartScreen(),
+      routerConfig: appRouter,
     );
   }
 }
@@ -180,31 +214,10 @@ class StartScreen extends StatelessWidget {
 
                   const SizedBox(height: 64),
 
-                  // 로그인 → 프로필 화면 (실제 로그인 구현 전 임시 연결)
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (context) => const ProfileScreen(),
-                        ),
-                      );
-                    },
-                    style: TextButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 48),
-                    ),
-                    child: const Text('로그인'),
-                  ),
-
-                  const SizedBox(height: 12),
-
                   // 시작하기 → 회원가입 화면
                   ElevatedButton(
                     onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (context) => const SignUpScreen(),
-                        ),
-                      );
+                      context.go('/signup');
                     },
                     child: const Text('시작하기'),
                   ),
