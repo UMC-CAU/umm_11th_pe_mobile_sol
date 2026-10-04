@@ -25,11 +25,10 @@ final appRouter = GoRouter(
     GoRoute(path: '/signup', builder: (context, state) => const SignUpScreen()),
     GoRoute(
       path: '/movies/:movieId',
-      builder: (context, state) =>
-          MovieDetailScreen(
-            movieId: state.pathParameters['movieId']!,
-            initialMovie: state.extra is Movie ? state.extra as Movie : null,
-          ),
+      builder: (context, state) => MovieDetailScreen(
+        movieId: state.pathParameters['movieId']!,
+        initialMovie: state.extra is Movie ? state.extra as Movie : null,
+      ),
     ),
     ShellRoute(
       builder: (context, state, child) =>
@@ -38,9 +37,8 @@ final appRouter = GoRouter(
         GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
         GoRoute(
           path: '/movies',
-          builder: (context, state) => MoviesScreen(
-            genre: state.uri.queryParameters['genre'] ?? '전체',
-          ),
+          builder: (context, state) =>
+              MoviesScreen(genre: state.uri.queryParameters['genre'] ?? '전체'),
         ),
         GoRoute(
           path: '/my',
@@ -237,4 +235,3 @@ class StartScreen extends StatelessWidget {
     );
   }
 }
-
