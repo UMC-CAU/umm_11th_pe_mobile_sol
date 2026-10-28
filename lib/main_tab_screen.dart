@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'app_colors.dart';
-import 'movies_screen.dart';
 
 // 각 화면 아래에 공통으로 표시되는 탭 바입니다.
 class MainTabScreen extends StatelessWidget {
@@ -52,12 +51,4 @@ class MainTabScreen extends StatelessWidget {
       ),
     );
   }
-}
-
-// 기존 main.dart의 라우팅 이름을 유지하면서 실제 영화 목록을 표시합니다.
-class MoviesPlaceholderScreen extends StatelessWidget {
-  const MoviesPlaceholderScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) => const MoviesScreen();
 }
