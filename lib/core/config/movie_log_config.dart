@@ -1,12 +1,15 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-/// The MovieLog backend address is independent from TMDB. Leave it empty until
-/// an actual backend address is available; the movie browsing screens only use
-/// the TMDB client.
+/// The workbook v5 host is independent from TMDB and does not need a token.
 abstract final class MovieLogConfig {
-  static String get baseUrl => dotenv.isInitialized
-      ? (dotenv.env['MOVIELOG_API_BASE_URL'] ?? '').trim()
-      : '';
+  static const workbookBaseUrl = 'https://workbook.devnoco.com';
+
+  static String get baseUrl {
+    final configured = dotenv.isInitialized
+        ? (dotenv.env['MOVIELOG_API_BASE_URL'] ?? '').trim()
+        : '';
+    return configured.isEmpty ? workbookBaseUrl : configured;
+  }
 }
 
 class MovieLogConfigurationException implements Exception {

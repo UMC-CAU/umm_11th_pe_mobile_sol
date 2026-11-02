@@ -24,8 +24,7 @@ class MovieLogClient {
   void close() => dio.close(force: true);
 }
 
-/// The backend contract/URLs for members, ratings and favorites are added in
-/// their own Services later. Never reuse the TMDB token or client for them.
+/// Shared by the v5 member and rating services. Never reuse TMDB credentials.
 Dio createMovieLogClient({String? baseUrl, String? accessToken}) {
   final url = (baseUrl ?? MovieLogConfig.baseUrl).trim();
   final token = accessToken?.trim() ?? '';

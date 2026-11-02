@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import 'app_colors.dart';
+import 'core/validation/sign_up_validators.dart';
+import 'view_models/sign_up_view_model.dart';
+import 'widgets/movielog_button.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -27,34 +31,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _passwordTouched = false;
   bool _agreedToTerms = false;
 
-  String? _validateNickname(String? value) {
-    if ((value ?? '').trim().characters.length < 2) {
-      return '닉네임은 2자 이상이어야 합니다.';
-    }
-    return null;
-  }
-
-  String? _validateEmail(String? value) {
-    final email = (value ?? '').trim();
-    final pattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-
-    if (!pattern.hasMatch(email)) {
-      return '올바른 이메일 형식이 아닙니다.';
-    }
-    return null;
-  }
-
-  String? _validatePassword(String? value) {
-    if ((value ?? '').characters.length < 8) {
-      return '비밀번호는 8자 이상이어야 합니다.';
-    }
-    return null;
-  }
-
   bool get _canSubmit =>
-      _validateNickname(_nicknameController.text) == null &&
-      _validateEmail(_emailController.text) == null &&
-      _validatePassword(_passwordController.text) == null &&
+      SignUpValidators.nickname(_nicknameController.text) == null &&
+      SignUpValidators.email(_emailController.text) == null &&
+      SignUpValidators.password(_passwordController.text) == null &&
+      context.read<SignUpViewModel>().checksPassed &&
       _agreedToTerms;
 
   @override
@@ -104,17 +85,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
   void _submit() {
     // Form 안의 모든 TextFormField.validator를 실행해.
     final isValid = _formKey.currentState?.validate() ?? false;
-    if (!isValid || !_agreedToTerms) return;
+    if (!isValid || !_canSubmit) return;
 
     FocusScope.of(context).unfocus();
 
-    // 이번 과제에서는 검증 완료 후 Mock 홈으로 이동합니다.
+    // v5에는 회원가입 POST가 없습니다. 입력·중복 확인 후 홈으로 이동합니다.
     context.go('/home');
   }
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final viewModel = context.watch<SignUpViewModel>();
 
     return PopScope(
       canPop: false,
@@ -160,9 +142,32 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           controller: _nicknameController,
                           focusNode: _nicknameFocus,
                           touched: _nicknameTouched,
-                          validator: _validateNickname,
+                          fieldKey: const Key('signup-nickname'),
+                          validator: SignUpValidators.nickname,
+                          serverErrorText: viewModel.nicknameErrorText,
+                          serverAvailable:
+                              viewModel.nicknameCheckStatus ==
+                              CheckStatus.available,
+                          successText:
+                              viewModel.nicknameCheckStatus ==
+                                  CheckStatus.available
+                              ? '사용할 수 있는 닉네임입니다.'
+                              : null,
+                          trailing: MovieLogButton(
+                            key: const Key('check-nickname'),
+                            label: '중복 확인',
+                            isLoading:
+                                viewModel.nicknameCheckStatus ==
+                                CheckStatus.checking,
+                            onPressed: viewModel.canCheckNickname
+                                ? () => viewModel.checkNickname(
+                                    _nicknameController.text,
+                                  )
+                                : null,
+                          ),
                           autofillHints: const [AutofillHints.nickname],
-                          onChanged: (_) {
+                          onChanged: (value) {
+                            viewModel.onNicknameChanged(value);
                             setState(() => _nicknameTouched = true);
                           },
                           onSubmitted: (_) {
@@ -178,10 +183,33 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           controller: _emailController,
                           focusNode: _emailFocus,
                           touched: _emailTouched,
-                          validator: _validateEmail,
+                          fieldKey: const Key('signup-email'),
+                          validator: SignUpValidators.email,
+                          serverErrorText: viewModel.emailErrorText,
+                          serverAvailable:
+                              viewModel.emailCheckStatus ==
+                              CheckStatus.available,
+                          successText:
+                              viewModel.emailCheckStatus ==
+                                  CheckStatus.available
+                              ? '사용할 수 있는 이메일입니다.'
+                              : null,
+                          trailing: MovieLogButton(
+                            key: const Key('check-email'),
+                            label: '중복 확인',
+                            isLoading:
+                                viewModel.emailCheckStatus ==
+                                CheckStatus.checking,
+                            onPressed: viewModel.canCheckEmail
+                                ? () => viewModel.checkEmail(
+                                    _emailController.text,
+                                  )
+                                : null,
+                          ),
                           keyboardType: TextInputType.emailAddress,
                           autofillHints: const [AutofillHints.email],
-                          onChanged: (_) {
+                          onChanged: (value) {
+                            viewModel.onEmailChanged(value);
                             setState(() => _emailTouched = true);
                           },
                           onSubmitted: (_) {
@@ -197,7 +225,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           controller: _passwordController,
                           focusNode: _passwordFocus,
                           touched: _passwordTouched,
-                          validator: _validatePassword,
+                          fieldKey: const Key('signup-password'),
+                          validator: SignUpValidators.password,
                           obscureText: true,
                           textInputAction: TextInputAction.done,
                           autofillHints: const [AutofillHints.newPassword],
@@ -220,22 +249,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
                         const SizedBox(height: 16),
 
-                        ElevatedButton(
+                        MovieLogButton(
+                          key: const Key('signup-submit'),
+                          label: '가입하기',
+                          width: double.infinity,
                           onPressed: _canSubmit ? _submit : null,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: AppColors.onPrimary,
-                            disabledBackgroundColor:
-                                _SignUpColors.disabledButton,
-                            disabledForegroundColor: Colors.white,
-                            minimumSize: const Size(double.infinity, 56),
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            textStyle: textTheme.titleMedium,
-                          ),
-                          child: const Text('가입하기'),
                         ),
 
                         const SizedBox(height: 32),
@@ -259,7 +277,6 @@ class _SignUpColors {
   static const error = Color(0xFFB3261E);
   static const errorBackground = Color(0xFFFFDAD6);
   static const inputBorder = Color(0xFFCAC6CE);
-  static const disabledButton = Color(0xFFCEC3DE);
 }
 
 // 입력 상태에 따라 배경, 테두리, 아이콘을 바꾸는 공통 입력창
@@ -277,6 +294,11 @@ class _ValidatedField extends StatelessWidget {
     this.textInputAction = TextInputAction.next,
     this.obscureText = false,
     this.autofillHints,
+    this.fieldKey,
+    this.trailing,
+    this.serverErrorText,
+    this.serverAvailable,
+    this.successText,
   });
 
   final String label;
@@ -291,14 +313,19 @@ class _ValidatedField extends StatelessWidget {
   final TextInputAction textInputAction;
   final bool obscureText;
   final Iterable<String>? autofillHints;
+  final Key? fieldKey;
+  final Widget? trailing;
+  final String? serverErrorText;
+  final bool? serverAvailable;
+  final String? successText;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     // 아이콘과 배경도 동일한 검사 규칙을 사용해.
-    final errorText = validator(controller.text);
-    final hasError = touched && errorText != null;
-    final isValid = touched && errorText == null;
+    final errorText = validator(controller.text) ?? serverErrorText;
+    final hasError = serverErrorText != null || (touched && errorText != null);
+    final isValid = touched && errorText == null && (serverAvailable ?? true);
 
     OutlineInputBorder border(Color color) {
       return OutlineInputBorder(
@@ -314,58 +341,83 @@ class _ValidatedField extends StatelessWidget {
 
         const SizedBox(height: 8),
 
-        TextFormField(
-          validator: validator,
-          // 입력하거나 포커스를 잃은 항목만 실시간으로 검사해.
-          autovalidateMode: touched
-              ? AutovalidateMode.always
-              : AutovalidateMode.disabled,
-          controller: controller,
-          focusNode: focusNode,
-          onChanged: onChanged,
-          onFieldSubmitted: onSubmitted,
-          keyboardType: keyboardType,
-          textInputAction: textInputAction,
-          obscureText: obscureText,
-          obscuringCharacter: '•',
-          autofillHints: autofillHints,
-          autocorrect: false,
-          enableSuggestions: !obscureText,
-          style: textTheme.bodyMedium?.copyWith(color: AppColors.textPrimary),
-          decoration: InputDecoration(
-            hintText: hintText,
-            hintStyle: textTheme.bodyMedium,
-            filled: true,
-            fillColor: hasError
-                ? _SignUpColors.errorBackground
-                : AppColors.cardBackground,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
-            ),
-            enabledBorder: border(_SignUpColors.inputBorder),
-            focusedBorder: border(AppColors.primary),
-            errorBorder: border(_SignUpColors.error),
-            focusedErrorBorder: border(_SignUpColors.error),
-            errorMaxLines: 2,
-            errorStyle: textTheme.bodySmall?.copyWith(
-              color: _SignUpColors.error,
-            ),
-            suffixIcon: hasError
-                ? const Icon(
-                    Icons.error_outline,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: TextFormField(
+                key: fieldKey,
+                validator: validator,
+                // forceErrorText also makes Form.validate fail for a server error.
+                forceErrorText: serverErrorText,
+                // 입력하거나 포커스를 잃은 항목만 실시간으로 검사해.
+                autovalidateMode: touched
+                    ? AutovalidateMode.always
+                    : AutovalidateMode.disabled,
+                controller: controller,
+                focusNode: focusNode,
+                onChanged: onChanged,
+                onFieldSubmitted: onSubmitted,
+                keyboardType: keyboardType,
+                textInputAction: textInputAction,
+                obscureText: obscureText,
+                obscuringCharacter: '•',
+                autofillHints: autofillHints,
+                autocorrect: false,
+                enableSuggestions: !obscureText,
+                style: textTheme.bodyMedium?.copyWith(
+                  color: AppColors.textPrimary,
+                ),
+                decoration: InputDecoration(
+                  errorText: serverErrorText,
+                  hintText: hintText,
+                  hintStyle: textTheme.bodyMedium,
+                  filled: true,
+                  fillColor: hasError
+                      ? _SignUpColors.errorBackground
+                      : AppColors.cardBackground,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
+                  enabledBorder: border(_SignUpColors.inputBorder),
+                  focusedBorder: border(AppColors.primary),
+                  errorBorder: border(_SignUpColors.error),
+                  focusedErrorBorder: border(_SignUpColors.error),
+                  errorMaxLines: 2,
+                  errorStyle: textTheme.bodySmall?.copyWith(
                     color: _SignUpColors.error,
-                    semanticLabel: '입력 오류',
-                  )
-                : isValid
-                ? const Icon(
-                    Icons.check_circle,
-                    color: AppColors.primary,
-                    semanticLabel: '입력 조건 충족',
-                  )
-                : null,
-          ),
+                  ),
+                  suffixIcon: hasError
+                      ? const Icon(
+                          Icons.error_outline,
+                          color: _SignUpColors.error,
+                          semanticLabel: '입력 오류',
+                        )
+                      : isValid
+                      ? const Icon(
+                          Icons.check_circle,
+                          color: AppColors.primary,
+                          semanticLabel: '입력 조건 충족',
+                        )
+                      : null,
+                ),
+              ),
+            ),
+            if (trailing != null) ...[
+              const SizedBox(width: 8),
+              Padding(padding: const EdgeInsets.only(top: 6), child: trailing!),
+            ],
+          ],
         ),
+        if (successText != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              successText!,
+              style: textTheme.bodySmall?.copyWith(color: AppColors.primary),
+            ),
+          ),
       ],
     );
   }
@@ -385,9 +437,8 @@ class _TermsAgreement extends StatelessWidget {
       onChanged: (checked) => onChanged(checked ?? false),
       title: Text(
         '필수 약관에 동의합니다',
-        style: Theme.of(
-          context,
-        ).textTheme.bodyMedium?.copyWith(color: AppColors.textPrimary),
+        style: Theme.of(context).textTheme.bodyMedium
+            ?.copyWith(color: AppColors.textPrimary),
       ),
       activeColor: AppColors.primary,
       checkColor: AppColors.onPrimary,
