@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import 'app_colors.dart';
 import 'common_app_bar.dart';
@@ -12,7 +13,8 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   String _name = '무비러버';
-  String _introduction = '매주 주말엔 영화관으로 출근하는 프로 관람객. '
+  String _introduction =
+      '매주 주말엔 영화관으로 출근하는 프로 관람객. '
       '좋은 영화를 보고 기록하는 것을 좋아합니다.';
 
   Future<void> _editProfile() async {
@@ -20,16 +22,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => ProfileEditSheet(name: _name, introduction: _introduction),
+      builder: (_) =>
+          ProfileEditSheet(name: _name, introduction: _introduction),
     );
     if (!mounted || result == null) return;
     setState(() {
       _name = result['name']!;
       _introduction = result['introduction']!;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('프로필을 수정했어요.')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('프로필을 수정했어요.')));
   }
 
   @override
@@ -67,6 +69,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
 
                   const GenreSection(),
+                  const SizedBox(height: 28),
+                  Card(
+                    margin: EdgeInsets.zero,
+                    color: AppColors.cardBackground,
+                    child: ListTile(
+                      leading: const Icon(
+                        Icons.star_outline,
+                        color: AppColors.primary,
+                      ),
+                      title: const Text('내가 등록한 평점'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push('/my/ratings'),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -252,7 +268,11 @@ class GenreChip extends StatelessWidget {
 
 // 프로필 편집값은 화면 내부 상태로만 유지합니다.
 class ProfileEditSheet extends StatefulWidget {
-  const ProfileEditSheet({super.key, required this.name, required this.introduction});
+  const ProfileEditSheet({
+    super.key,
+    required this.name,
+    required this.introduction,
+  });
   final String name;
   final String introduction;
 
@@ -301,14 +321,19 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('프로필 수정', style: Theme.of(context).textTheme.headlineSmall),
+                Text(
+                  '프로필 수정',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
                 const SizedBox(height: 20),
                 TextFormField(
                   controller: _nameController,
                   decoration: const InputDecoration(labelText: '닉네임'),
                   textInputAction: TextInputAction.next,
-                  validator: (value) => (value ?? '').trim().characters.length < 2
-                      ? '닉네임은 2자 이상이어야 합니다.' : null,
+                  validator: (value) =>
+                      (value ?? '').trim().characters.length < 2
+                      ? '닉네임은 2자 이상이어야 합니다.'
+                      : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(

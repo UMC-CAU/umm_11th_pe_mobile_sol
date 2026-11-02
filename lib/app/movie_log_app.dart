@@ -6,6 +6,8 @@ import '../app_colors.dart';
 import '../core/network/movie_log_client.dart';
 import '../core/network/tmdb_client.dart';
 import '../data/local/movie_genre_preferences.dart';
+import '../data/services/member_check_service.dart';
+import '../data/services/rating_api_service.dart';
 import '../data/services/tmdb_movie_service.dart';
 import '../router/app_router.dart';
 
@@ -15,10 +17,14 @@ class MovieLogApp extends StatefulWidget {
     this.initialLocation = '/',
     this.movieService,
     this.genrePreferences,
+    this.memberCheckService,
+    this.ratingApiService,
   });
   final String initialLocation;
   final TmdbMovieService? movieService;
   final MovieGenrePreferences? genrePreferences;
+  final MemberCheckService? memberCheckService;
+  final RatingApiService? ratingApiService;
 
   @override
   State<MovieLogApp> createState() => _MovieLogAppState();
@@ -50,6 +56,16 @@ class _MovieLogAppState extends State<MovieLogApp> {
         create: (context) =>
             widget.movieService ??
             TmdbMovieService(context.read<TmdbClient>().dio),
+      ),
+      Provider<MemberCheckService>(
+        create: (context) =>
+            widget.memberCheckService ??
+            MemberCheckService(context.read<MovieLogClient>().dio),
+      ),
+      Provider<RatingApiService>(
+        create: (context) =>
+            widget.ratingApiService ??
+            RatingApiService(context.read<MovieLogClient>().dio),
       ),
       Provider<MovieGenrePreferences>(
         create: (_) => widget.genrePreferences ?? SharedMovieGenrePreferences(),

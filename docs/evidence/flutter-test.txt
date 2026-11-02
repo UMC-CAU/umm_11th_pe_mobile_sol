@@ -1,0 +1,81 @@
+Waiting for another flutter command to release the startup lock...
+00:00 +0: loading test/tmdb_service_test.dart
+00:00 +0: test/tmdb_service_test.dart: all omits with_genres, multi uses OR, and client attaches bearer auth
+[TMDB][REQUEST] {"method":"GET","url":"https://api.themoviedb.org/3/discover/movie?language=ko-KR&page=1&include_adult=false&sort_by=popularity.desc","query":{"language":"ko-KR","page":1,"include_adult":false,"sort_by":"popularity.desc"},"headers":{"Authorization":"[REDACTED]","accept":"application/json"}}
+[TMDB][RESPONSE] {"url":"https://api.themoviedb.org/3/discover/movie?language=ko-KR&page=1&include_adult=false&sort_by=popularity.desc","status":200,"body":{"page":1,"results":[],"total_pages":0,"total_results":0}}
+[TMDB][REQUEST] {"method":"GET","url":"https://api.themoviedb.org/3/discover/movie?language=ko-KR&page=3&include_adult=false&sort_by=popularity.desc&with_genres=28%7C18","query":{"language":"ko-KR","page":3,"include_adult":false,"sort_by":"popularity.desc","with_genres":"28|18"},"headers":{"Authorization":"[REDACTED]","accept":"application/json"}}
+[TMDB][RESPONSE] {"url":"https://api.themoviedb.org/3/discover/movie?language=ko-KR&page=3&include_adult=false&sort_by=popularity.desc&with_genres=28%7C18","status":200,"body":{"page":1,"results":[],"total_pages":0,"total_results":0}}
+00:00 +1: test/api_client_separation_test.dart: TMDB and MovieLog requests have independent hosts and credentials
+[TMDB][REQUEST] {"method":"GET","url":"https://api.themoviedb.org/3/movie/popular?","query":{},"headers":{"Authorization":"[REDACTED]","accept":"application/json"}}
+00:00 +2: test/api_client_separation_test.dart: TMDB and MovieLog requests have independent hosts and credentials
+00:00 +2: test/tmdb_service_test.dart: missing token fails before HTTP without exposing a secret
+[TMDB][REQUEST] {"method":"GET","url":"https://api.themoviedb.org/3/movie/popular?language=ko-KR&page=1","query":{"language":"ko-KR","page":1},"headers":{"accept":"application/json"}}
+00:00 +2: test/api_client_separation_test.dart: TMDB and MovieLog requests have independent hosts and credentials
+[TMDB][RESPONSE] {"url":"https://api.themoviedb.org/3/movie/popular?","status":200,"body":{"page":1,"results":[],"total_pages":0,"total_results":0}}
+00:00 +3: test/api_client_separation_test.dart: TMDB and MovieLog requests have independent hosts and credentials
+00:00 +4: test/tmdb_service_test.dart: request, response and error logs redact headers, URL, body and error message
+00:00 +5: test/tmdb_service_test.dart: request, response and error logs redact headers, URL, body and error message
+00:00 +6: test/api_client_separation_test.dart: MovieLog login and logout change only its own request headers
+00:00 +7: test/tmdb_service_test.dart: disabled logging writes nothing for success or error
+00:00 +8: test/api_client_separation_test.dart: missing MovieLog address fails before HTTP instead of requesting TMDB
+00:01 +9: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:02 +10: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:02 +11: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:02 +12: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:02 +13: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:02 +14: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:02 +15: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:02 +16: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:02 +17: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:02 +18: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:02 +19: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:02 +20: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:02 +21: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:02 +22: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:02 +23: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:02 +24: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:02 +25: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:02 +26: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:02 +27: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:02 +28: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:02 +29: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:02 +30: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:02 +31: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:02 +32: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:03 +33: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:03 +34: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:03 +35: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:03 +36: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:03 +37: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:03 +38: test/week6_widget_test.dart: signup displays checking, duplicate, restored duplicate and available
+00:03 +39: test/widget_test.dart: original entry remains available without starting movie requests
+00:03 +40: test/widget_test.dart: original entry remains available without starting movie requests
+00:03 +41: test/widget_test.dart: original entry remains available without starting movie requests
+00:03 +42: test/widget_test.dart: original entry remains available without starting movie requests
+00:03 +43: test/week6_widget_test.dart: submit needs both checks and moves home without creating an account
+00:03 +44: test/week6_widget_test.dart: submit needs both checks and moves home without creating an account
+00:04 +45: test/week6_widget_test.dart: submit needs both checks and moves home without creating an account
+00:04 +46: test/week6_widget_test.dart: submit needs both checks and moves home without creating an account
+00:04 +47: test/week6_widget_test.dart: submit needs both checks and moves home without creating an account
+00:04 +48: test/week6_widget_test.dart: submit needs both checks and moves home without creating an account
+00:04 +49: test/week6_widget_test.dart: submit needs both checks and moves home without creating an account
+00:04 +50: test/week6_widget_test.dart: submit needs both checks and moves home without creating an account
+00:04 +51: test/week6_widget_test.dart: submit needs both checks and moves home without creating an account
+00:04 +52: test/week6_widget_test.dart: submit needs both checks and moves home without creating an account
+00:04 +53: test/poster_modes_test.dart: poster preview keeps a successful movie list and count
+00:04 +54: test/poster_modes_test.dart: poster preview keeps a successful movie list and count
+00:04 +55: test/widget_test.dart: list loads once, shows real IDs and keeps search/sort controls
+00:04 +56: test/week6_widget_test.dart: profile pushes ratings above tabs and back restores the profile
+00:04 +57: test/widget_test.dart: loading disables genre selection and pull to refresh duplication
+00:04 +58: test/week6_widget_test.dart: ratings shows loading, error, retry, empty and success
+00:04 +59: test/widget_test.dart: genre sheet confirms multi selection and cancel sends no request
+00:04 +60: test/widget_test.dart: genre sheet confirms multi selection and cancel sends no request
+00:05 +61: test/widget_test.dart: refresh failure dialog retains list; cancel then retry succeeds
+00:05 +62: test/widget_test.dart: numeric deep link loads detail and gives its ID to rating dialog
+00:05 +63: test/widget_test.dart: rating result contains TMDB ID and the five-point user score
+00:05 +64: test/widget_test.dart: missing poster is a visible placeholder
+00:05 +65: test/widget_test.dart: failed poster download uses the error placeholder
+00:05 +66: test/widget_test.dart: null overview is centered with the workbook message
+00:05 +67: test/widget_test.dart: card omits missing year without a leading separator
+00:05 +68: test/widget_test.dart: app exposes separate typed clients without shadowing TMDB
+00:06 +69: All tests passed!
