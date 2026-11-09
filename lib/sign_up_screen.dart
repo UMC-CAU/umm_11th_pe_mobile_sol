@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 
 import 'app_colors.dart';
 import 'core/validation/sign_up_validators.dart';
+import 'data/models/create_member_request.dart';
+import 'view_models/learning_member_session.dart';
 import 'view_models/sign_up_view_model.dart';
 import 'widgets/movielog_button.dart';
 
@@ -36,7 +38,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
       SignUpValidators.email(_emailController.text) == null &&
       SignUpValidators.password(_passwordController.text) == null &&
       context.read<SignUpViewModel>().checksPassed &&
-      _agreedToTerms;
+      _agreedToTerms &&
+      context.read<SignUpViewModel>().submitStatus != SubmitStatus.submitting;
 
   @override
   void initState() {
@@ -82,15 +85,27 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
-  void _submit() {
-    // Form 안의 모든 TextFormField.validator를 실행해.
+  Future<void> _submit() async {
     final isValid = _formKey.currentState?.validate() ?? false;
     if (!isValid || !_canSubmit) return;
-
     FocusScope.of(context).unfocus();
-
-    // v5에는 회원가입 POST가 없습니다. 입력·중복 확인 후 홈으로 이동합니다.
-    context.go('/home');
+    final vm = context.read<SignUpViewModel>();
+    await vm.submit(
+      CreateMemberRequest(
+        email: _emailController.text,
+        password: _passwordController.text,
+        nickname: _nicknameController.text,
+      ),
+    );
+    if (!mounted) return;
+    if (vm.submitStatus == SubmitStatus.success && vm.createdMemberId != null) {
+      context.read<LearningMemberSession>().setMemberId(vm.createdMemberId!);
+      context.go('/movies');
+    } else if (vm.snackbarMessage != null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(vm.snackbarMessage!)));
+    }
   }
 
   @override
@@ -99,7 +114,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final viewModel = context.watch<SignUpViewModel>();
 
     return PopScope(
-      canPop: false,
+      canPop: viewModel.submitStatus != SubmitStatus.submitting,
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
@@ -110,7 +125,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
           surfaceTintColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
-          automaticallyImplyLeading: false,
+          leading: BackButton(
+            onPressed: viewModel.submitStatus == SubmitStatus.submitting
+                ? null
+                : () => context.canPop() ? context.pop() : context.go('/'),
+          ),
         ),
         body: SafeArea(
           child: SingleChildScrollView(
@@ -118,148 +137,156 @@ class _SignUpScreenState extends State<SignUpScreen> {
             padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
             child: Align(
               alignment: Alignment.topCenter,
-              child: ConstrainedBox(
-                // 너비만 제한하고 높이는 오류 문구를 포함한 내용에 맞춰 늘어나게 해.
-                constraints: const BoxConstraints(maxWidth: 480),
-                child: AutofillGroup(
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          '환영합니다!\n간단한 정보만 입력하고 시작해보세요.',
-                          textAlign: TextAlign.center,
-                          style: textTheme.bodyMedium?.copyWith(height: 1.7),
-                        ),
+              child: AbsorbPointer(
+                absorbing: viewModel.submitStatus == SubmitStatus.submitting,
+                child: ConstrainedBox(
+                  // 너비만 제한하고 높이는 오류 문구를 포함한 내용에 맞춰 늘어나게 해.
+                  constraints: const BoxConstraints(maxWidth: 480),
+                  child: AutofillGroup(
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            '환영합니다!\n간단한 정보만 입력하고 시작해보세요.',
+                            textAlign: TextAlign.center,
+                            style: textTheme.bodyMedium?.copyWith(height: 1.7),
+                          ),
 
-                        const SizedBox(height: 52),
+                          const SizedBox(height: 52),
 
-                        _ValidatedField(
-                          label: '닉네임',
-                          hintText: '닉네임을 입력해주세요',
-                          controller: _nicknameController,
-                          focusNode: _nicknameFocus,
-                          touched: _nicknameTouched,
-                          fieldKey: const Key('signup-nickname'),
-                          validator: SignUpValidators.nickname,
-                          serverErrorText: viewModel.nicknameErrorText,
-                          serverAvailable:
-                              viewModel.nicknameCheckStatus ==
-                              CheckStatus.available,
-                          successText:
-                              viewModel.nicknameCheckStatus ==
-                                  CheckStatus.available
-                              ? '사용할 수 있는 닉네임입니다.'
-                              : null,
-                          trailing: MovieLogButton(
-                            key: const Key('check-nickname'),
-                            label: '중복 확인',
-                            isLoading:
+                          _ValidatedField(
+                            label: '닉네임',
+                            hintText: '닉네임을 입력해주세요',
+                            controller: _nicknameController,
+                            focusNode: _nicknameFocus,
+                            touched: _nicknameTouched,
+                            fieldKey: const Key('signup-nickname'),
+                            validator: SignUpValidators.nickname,
+                            serverErrorText: viewModel.nicknameErrorText,
+                            serverAvailable:
                                 viewModel.nicknameCheckStatus ==
-                                CheckStatus.checking,
-                            onPressed: viewModel.canCheckNickname
-                                ? () => viewModel.checkNickname(
-                                    _nicknameController.text,
-                                  )
+                                CheckStatus.available,
+                            successText:
+                                viewModel.nicknameCheckStatus ==
+                                    CheckStatus.available
+                                ? '사용할 수 있는 닉네임입니다.'
                                 : null,
+                            trailing: MovieLogButton(
+                              key: const Key('check-nickname'),
+                              label: '중복 확인',
+                              isLoading:
+                                  viewModel.nicknameCheckStatus ==
+                                  CheckStatus.checking,
+                              onPressed: viewModel.canCheckNickname
+                                  ? () => viewModel.checkNickname(
+                                      _nicknameController.text,
+                                    )
+                                  : null,
+                            ),
+                            autofillHints: const [AutofillHints.nickname],
+                            onChanged: (value) {
+                              viewModel.onNicknameChanged(value);
+                              setState(() => _nicknameTouched = true);
+                            },
+                            onSubmitted: (_) {
+                              _emailFocus.requestFocus();
+                            },
                           ),
-                          autofillHints: const [AutofillHints.nickname],
-                          onChanged: (value) {
-                            viewModel.onNicknameChanged(value);
-                            setState(() => _nicknameTouched = true);
-                          },
-                          onSubmitted: (_) {
-                            _emailFocus.requestFocus();
-                          },
-                        ),
 
-                        const SizedBox(height: 24),
+                          const SizedBox(height: 24),
 
-                        _ValidatedField(
-                          label: '이메일',
-                          hintText: '이메일 주소를 입력해주세요',
-                          controller: _emailController,
-                          focusNode: _emailFocus,
-                          touched: _emailTouched,
-                          fieldKey: const Key('signup-email'),
-                          validator: SignUpValidators.email,
-                          serverErrorText: viewModel.emailErrorText,
-                          serverAvailable:
-                              viewModel.emailCheckStatus ==
-                              CheckStatus.available,
-                          successText:
-                              viewModel.emailCheckStatus ==
-                                  CheckStatus.available
-                              ? '사용할 수 있는 이메일입니다.'
-                              : null,
-                          trailing: MovieLogButton(
-                            key: const Key('check-email'),
-                            label: '중복 확인',
-                            isLoading:
+                          _ValidatedField(
+                            label: '이메일',
+                            hintText: '이메일 주소를 입력해주세요',
+                            controller: _emailController,
+                            focusNode: _emailFocus,
+                            touched: _emailTouched,
+                            fieldKey: const Key('signup-email'),
+                            validator: SignUpValidators.email,
+                            serverErrorText: viewModel.emailErrorText,
+                            serverAvailable:
                                 viewModel.emailCheckStatus ==
-                                CheckStatus.checking,
-                            onPressed: viewModel.canCheckEmail
-                                ? () => viewModel.checkEmail(
-                                    _emailController.text,
-                                  )
+                                CheckStatus.available,
+                            successText:
+                                viewModel.emailCheckStatus ==
+                                    CheckStatus.available
+                                ? '사용할 수 있는 이메일입니다.'
                                 : null,
+                            trailing: MovieLogButton(
+                              key: const Key('check-email'),
+                              label: '중복 확인',
+                              isLoading:
+                                  viewModel.emailCheckStatus ==
+                                  CheckStatus.checking,
+                              onPressed: viewModel.canCheckEmail
+                                  ? () => viewModel.checkEmail(
+                                      _emailController.text,
+                                    )
+                                  : null,
+                            ),
+                            keyboardType: TextInputType.emailAddress,
+                            autofillHints: const [AutofillHints.email],
+                            onChanged: (value) {
+                              viewModel.onEmailChanged(value);
+                              setState(() => _emailTouched = true);
+                            },
+                            onSubmitted: (_) {
+                              _passwordFocus.requestFocus();
+                            },
                           ),
-                          keyboardType: TextInputType.emailAddress,
-                          autofillHints: const [AutofillHints.email],
-                          onChanged: (value) {
-                            viewModel.onEmailChanged(value);
-                            setState(() => _emailTouched = true);
-                          },
-                          onSubmitted: (_) {
-                            _passwordFocus.requestFocus();
-                          },
-                        ),
 
-                        const SizedBox(height: 24),
+                          const SizedBox(height: 24),
 
-                        _ValidatedField(
-                          label: '비밀번호',
-                          hintText: '비밀번호를 입력해주세요',
-                          controller: _passwordController,
-                          focusNode: _passwordFocus,
-                          touched: _passwordTouched,
-                          fieldKey: const Key('signup-password'),
-                          validator: SignUpValidators.password,
-                          obscureText: true,
-                          textInputAction: TextInputAction.done,
-                          autofillHints: const [AutofillHints.newPassword],
-                          onChanged: (_) {
-                            setState(() => _passwordTouched = true);
-                          },
-                          onSubmitted: (_) {
-                            _passwordFocus.unfocus();
-                          },
-                        ),
+                          _ValidatedField(
+                            label: '비밀번호',
+                            hintText: '비밀번호를 입력해주세요',
+                            controller: _passwordController,
+                            focusNode: _passwordFocus,
+                            touched: _passwordTouched,
+                            fieldKey: const Key('signup-password'),
+                            validator: SignUpValidators.password,
+                            serverErrorText: viewModel.passwordErrorText,
+                            obscureText: true,
+                            textInputAction: TextInputAction.done,
+                            autofillHints: const [AutofillHints.newPassword],
+                            onChanged: (_) {
+                              viewModel.onPasswordChanged();
+                              setState(() => _passwordTouched = true);
+                            },
+                            onSubmitted: (_) {
+                              _passwordFocus.unfocus();
+                            },
+                          ),
 
-                        const SizedBox(height: 48),
+                          const SizedBox(height: 48),
 
-                        _TermsAgreement(
-                          value: _agreedToTerms,
-                          onChanged: (value) {
-                            setState(() => _agreedToTerms = value);
-                          },
-                        ),
+                          _TermsAgreement(
+                            value: _agreedToTerms,
+                            onChanged: (value) {
+                              setState(() => _agreedToTerms = value);
+                            },
+                          ),
 
-                        const SizedBox(height: 16),
+                          const SizedBox(height: 16),
 
-                        MovieLogButton(
-                          key: const Key('signup-submit'),
-                          label: '가입하기',
-                          width: double.infinity,
-                          onPressed: _canSubmit ? _submit : null,
-                        ),
+                          MovieLogButton(
+                            key: const Key('signup-submit'),
+                            label: '가입하기',
+                            isLoading:
+                                viewModel.submitStatus ==
+                                SubmitStatus.submitting,
+                            width: double.infinity,
+                            onPressed: _canSubmit ? _submit : null,
+                          ),
 
-                        const SizedBox(height: 32),
+                          const SizedBox(height: 32),
 
-                        const _LoginPrompt(),
-                      ],
+                          const _LoginPrompt(),
+                        ],
+                      ),
                     ),
                   ),
                 ),

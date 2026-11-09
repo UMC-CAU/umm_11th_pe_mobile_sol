@@ -5,7 +5,8 @@ import 'package:provider/provider.dart';
 import '../data/models/tmdb_movie_dto.dart';
 import '../data/local/movie_genre_preferences.dart';
 import '../data/services/tmdb_movie_service.dart';
-import '../data/services/member_check_service.dart';
+import '../data/services/sign_up_service.dart';
+import '../view_models/learning_member_session.dart';
 import '../data/services/rating_api_service.dart';
 import '../home_screen.dart';
 import '../main_tab_screen.dart';
@@ -31,8 +32,7 @@ GoRouter createAppRouter({String initialLocation = '/'}) {
       GoRoute(
         path: '/signup',
         builder: (context, state) => ChangeNotifierProvider<SignUpViewModel>(
-          create: (context) =>
-              SignUpViewModel(context.read<MemberCheckService>()),
+          create: (context) => SignUpViewModel(context.read<SignUpService>()),
           child: const SignUpScreen(),
         ),
       ),
@@ -43,6 +43,8 @@ GoRouter createAppRouter({String initialLocation = '/'}) {
               key: ValueKey(state.uri.path),
               create: (context) => MovieDetailViewModel(
                 context.read<TmdbMovieService>(),
+                ratingService: context.read<RatingApiService>(),
+                memberId: context.read<LearningMemberSession>().memberId,
                 movieId: int.tryParse(state.pathParameters['movieId'] ?? ''),
                 initialMovie: state.extra is TmdbMovieDto
                     ? state.extra as TmdbMovieDto
@@ -92,15 +94,38 @@ GoRouter createAppRouter({String initialLocation = '/'}) {
               GoRoute(
                 path: 'ratings',
                 parentNavigatorKey: rootNavigatorKey,
-                builder: (context, state) =>
-                    ChangeNotifierProvider<MyRatingsViewModel>(
-                      create: (context) => MyRatingsViewModel(
-                        context.read<RatingApiService>(),
-                        context.read<TmdbMovieService>(),
-                        sampleMemberId,
-                      )..load(),
-                      child: const MyRatingsScreen(),
-                    ),
+                builder: (context, state) {
+                  final id = context.read<LearningMemberSession>().memberId;
+                  if (id == null) {
+                    return Scaffold(
+                      appBar: AppBar(
+                        centerTitle: true,
+                        title: const Text('내가 등록한 평점'),
+                      ),
+                      body: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('학습용 회원가입이 필요합니다.'),
+                            const SizedBox(height: 12),
+                            FilledButton(
+                              onPressed: () => context.go('/signup'),
+                              child: const Text('회원가입'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                  return ChangeNotifierProvider<MyRatingsViewModel>(
+                    create: (context) => MyRatingsViewModel(
+                      context.read<RatingApiService>(),
+                      context.read<TmdbMovieService>(),
+                      id,
+                    )..load(),
+                    child: const MyRatingsScreen(),
+                  );
+                },
               ),
             ],
           ),

@@ -4,9 +4,8 @@ import 'package:flutter/foundation.dart';
 import '../data/models/rating_with_movie.dart';
 import '../data/models/tmdb_movie_dto.dart';
 import '../data/services/rating_api_service.dart';
+import '../data/services/sign_up_service.dart';
 import '../data/services/tmdb_movie_service.dart';
-
-const int sampleMemberId = 1;
 
 enum MyRatingsLoadStatus { idle, loading, success, empty, error }
 
@@ -22,6 +21,10 @@ class MyRatingsViewModel extends ChangeNotifier {
   List<RatingWithMovie> ratings = const [];
   MyRatingsLoadStatus status = MyRatingsLoadStatus.idle;
   String? message;
+  String? refreshWarning;
+  final Set<int> selectedRatingIds = {};
+  bool isEditing = false;
+  bool isDeletingSelected = false;
 
   bool _isCurrent(int version) => !_disposed && version == _requestVersion;
 
@@ -67,6 +70,7 @@ class MyRatingsViewModel extends ChangeNotifier {
       status = ratings.isEmpty
           ? MyRatingsLoadStatus.empty
           : MyRatingsLoadStatus.success;
+      refreshWarning = null;
       if (missingMovies > 0) {
         message = '일부 영화 정보를 가져오지 못해 제목·포스터를 대신 표시합니다.';
       }
@@ -84,6 +88,104 @@ class MyRatingsViewModel extends ChangeNotifier {
       message = '평점 응답을 읽지 못했습니다. 다시 시도해 주세요.';
     }
     if (_isCurrent(version)) notifyListeners();
+  }
+
+  Future<void> _refreshAfterWrite() async {
+    await load();
+    if (_disposed) return;
+    if (status == MyRatingsLoadStatus.error) {
+      refreshWarning = '저장은 완료됐지만 목록을 불러오지 못했습니다. 조회만 다시 시도해 주세요.';
+      notifyListeners();
+    }
+  }
+
+  Future<void> updateRating({
+    required int ratingId,
+    required int score,
+    String? comment,
+  }) async {
+    try {
+      await _service.updateRating(
+        memberId: memberId,
+        ratingId: ratingId,
+        score: score,
+        comment: comment,
+      );
+    } on DioException catch (error) {
+      final text = serverErrorMessage(
+        error,
+        fallback: '수정하지 못했습니다. 다시 시도해 주세요.',
+      );
+      if (shouldRefreshAfterRatingError(error)) await load();
+      throw RatingWriteException(text);
+    }
+    await _refreshAfterWrite();
+  }
+
+  Future<void> deleteRating(int ratingId) async {
+    try {
+      await _service.deleteRating(memberId: memberId, ratingId: ratingId);
+    } on DioException catch (error) {
+      final text = serverErrorMessage(
+        error,
+        fallback: '삭제하지 못했습니다. 다시 시도해 주세요.',
+      );
+      if (shouldRefreshAfterRatingError(error)) await load();
+      throw RatingWriteException(text);
+    }
+    await _refreshAfterWrite();
+  }
+
+  void startEditing() {
+    if (_disposed || isDeletingSelected) return;
+    isEditing = true;
+    selectedRatingIds.clear();
+    notifyListeners();
+  }
+
+  void cancelEditing() {
+    if (_disposed || isDeletingSelected) return;
+    isEditing = false;
+    selectedRatingIds.clear();
+    notifyListeners();
+  }
+
+  void selectRating(int id, bool selected) {
+    if (_disposed || isDeletingSelected) return;
+    if (selected) {
+      selectedRatingIds.add(id);
+    } else {
+      selectedRatingIds.remove(id);
+    }
+    notifyListeners();
+  }
+
+  /// Returns the number of failed requests. Successful IDs are not retried.
+  Future<int> deleteSelectedRatings() async {
+    if (_disposed || isDeletingSelected || selectedRatingIds.isEmpty) return 0;
+    isDeletingSelected = true;
+    notifyListeners();
+    var failed = 0;
+    final serviceRequestCount = selectedRatingIds.length;
+    try {
+      for (final id in selectedRatingIds.toList()) {
+        try {
+          await _service.deleteRating(memberId: memberId, ratingId: id);
+          selectedRatingIds.remove(id);
+        } catch (_) {
+          failed++;
+        }
+      }
+      if (failed < serviceRequestCount) {
+        await _refreshAfterWrite();
+      } else {
+        await load();
+      }
+      return failed;
+    } finally {
+      isDeletingSelected = false;
+      if (!_disposed) notifyListeners();
+    }
   }
 
   @override

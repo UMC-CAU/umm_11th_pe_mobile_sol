@@ -1,3 +1,8 @@
+import 'package:dio/dio.dart';
+
+import '../data/models/rating_request.dart';
+import '../data/services/rating_api_service.dart';
+import '../data/services/sign_up_service.dart';
 import '../data/models/tmdb_movie_dto.dart';
 import '../data/services/tmdb_movie_service.dart';
 import 'movie_request_state.dart';
@@ -6,10 +11,16 @@ class MovieDetailViewModel extends MovieRequestViewModel {
   MovieDetailViewModel(
     this._service, {
     required this.movieId,
+    this.ratingService,
+    this.memberId,
     TmdbMovieDto? initialMovie,
   }) : _movie = initialMovie?.id == movieId ? initialMovie : null;
 
   final TmdbMovieService _service;
+  final RatingApiService? ratingService;
+  final int? memberId;
+  bool isSubmitting = false;
+  bool _detailDisposed = false;
   final int? movieId;
   TmdbMovieDto? _movie;
   MovieLoadStatus _status = MovieLoadStatus.idle;
@@ -46,5 +57,38 @@ class MovieDetailViewModel extends MovieRequestViewModel {
       _status = MovieLoadStatus.error;
     }
     notifyState();
+  }
+
+  Future<void> createRating({required int score, String? comment}) async {
+    final currentMovie = _movie;
+    if (memberId == null || ratingService == null || currentMovie == null) {
+      throw const RatingWriteException('먼저 회원가입을 완료해 주세요.');
+    }
+    if (isSubmitting) return;
+    isSubmitting = true;
+    notifyState();
+    try {
+      await ratingService!.createRating(
+        memberId: memberId!,
+        request: CreateRatingRequest(
+          movieId: currentMovie.id,
+          score: score,
+          comment: comment,
+        ),
+      );
+    } on DioException catch (error) {
+      throw RatingWriteException(
+        serverErrorMessage(error, fallback: '평점을 등록하지 못했습니다. 다시 시도해 주세요.'),
+      );
+    } finally {
+      isSubmitting = false;
+      if (!_detailDisposed) notifyState();
+    }
+  }
+
+  @override
+  void dispose() {
+    _detailDisposed = true;
+    super.dispose();
   }
 }
