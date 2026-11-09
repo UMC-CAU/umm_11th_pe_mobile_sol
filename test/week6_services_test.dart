@@ -62,7 +62,7 @@ void main() {
       dio.httpClientAdapter = adapter;
       final service = RatingApiService(dio);
       expect(await service.fetchMyRatings(1), isEmpty);
-      expect(adapter.requests.single.path, '/v5/members/1/ratings');
+      expect(adapter.requests.single.path, '/v6/members/1/ratings');
       adapter.status = 404;
       adapter.body = {
         'message': '존재하지 않는 유저입니다.',

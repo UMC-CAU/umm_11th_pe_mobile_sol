@@ -8,7 +8,6 @@ import 'package:movielog/core/network/movie_log_client.dart';
 import 'package:movielog/data/models/tmdb_movie_page.dart';
 import 'package:movielog/data/models/tmdb_movie_dto.dart';
 import 'package:movielog/movie_card.dart';
-import 'package:movielog/data/models/movie_rating_draft.dart';
 import 'package:movielog/movie_poster.dart';
 import 'package:movielog/movie_rating_input.dart';
 import 'package:movielog/movies_screen.dart';
@@ -16,6 +15,8 @@ import 'package:movielog/view_models/movie_list_view_model.dart';
 import 'package:provider/provider.dart';
 
 import 'support/movie_fakes.dart';
+import 'support/week6_fakes.dart';
+import 'package:movielog/view_models/learning_member_session.dart';
 
 void phoneViewport(WidgetTester tester) {
   tester.view.physicalSize = const Size(393, 852);
@@ -173,47 +174,60 @@ void main() {
     },
   );
 
-  testWidgets(
-    'numeric deep link loads detail and gives its ID to rating dialog',
-    (tester) async {
-      phoneViewport(tester);
-      final service = FakeTmdbService();
-      await tester.pumpWidget(
-        MovieLogApp(
-          initialLocation: '/movies/98765',
-          movieService: service,
-          genrePreferences: MemoryGenrePreferences(),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(service.detailIds, [98765]);
-      expect(find.text('영화 98765'), findsOneWidget);
-      await tester.tap(find.text('평점 남기기'));
-      await tester.pumpAndSettle();
-      final dialog = tester.widget<MovieRatingInput>(
-        find.byType(MovieRatingInput),
-      );
-      expect(dialog.movieId, 98765);
-      expect(tester.takeException(), isNull);
-    },
-  );
-
-  testWidgets('rating result contains TMDB ID and the five-point user score', (
+  testWidgets('numeric deep link passes the TMDB ID to the rating service', (
     tester,
   ) async {
-    MovieRatingDraft? result;
+    phoneViewport(tester);
+    final movies = FakeTmdbService();
+    final ratings = FakeRatingApiService();
+    final session = LearningMemberSession()..setMemberId(42);
+    addTearDown(session.dispose);
+    await tester.pumpWidget(
+      MovieLogApp(
+        initialLocation: '/movies/98765',
+        movieService: movies,
+        ratingApiService: ratings,
+        learningMemberSession: session,
+        genrePreferences: MemoryGenrePreferences(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(movies.detailIds, [98765]);
+    await tester.tap(find.text('평점 남기기'));
+    await tester.pumpAndSettle();
+    expect(find.byType(RatingDialog), findsOneWidget);
+    final stars = find.byIcon(Icons.star);
+    await tester.tap(stars.at(2));
+    await tester.pump();
+    await tester.enterText(find.byKey(const Key('rating-comment')), '좋아요');
+    await tester.tap(find.byKey(const Key('rating-confirm')));
+    await tester.pumpAndSettle();
+    expect(ratings.created.single.movieId, 98765);
+    expect(ratings.created.single.comment, '좋아요');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('rating dialog pre-fills existing score and comment', (
+    tester,
+  ) async {
+    int? selected;
+    String? comment;
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: Builder(
             builder: (context) => TextButton(
-              onPressed: () async {
-                result = await showDialog<MovieRatingDraft>(
-                  context: context,
-                  builder: (_) =>
-                      const MovieRatingInput(movieId: 4321, initialRating: 4),
-                );
-              },
+              onPressed: () => showDialog<bool>(
+                context: context,
+                builder: (_) => RatingDialog(
+                  initialScore: 4,
+                  initialComment: '기존 후기',
+                  onSubmit: (score, text) async {
+                    selected = score;
+                    comment = text;
+                  },
+                ),
+              ),
               child: const Text('open'),
             ),
           ),
@@ -222,10 +236,11 @@ void main() {
     );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('저장'));
+    expect(find.text('기존 후기'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('rating-confirm')));
     await tester.pumpAndSettle();
-    expect(result!.movieId, 4321);
-    expect(result!.score, 4);
+    expect(selected, 4);
+    expect(comment, '기존 후기');
   });
 
   testWidgets('missing poster is a visible placeholder', (tester) async {

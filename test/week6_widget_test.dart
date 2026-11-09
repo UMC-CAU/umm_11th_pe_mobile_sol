@@ -6,6 +6,7 @@ import 'package:movielog/app/movie_log_app.dart';
 import 'package:movielog/data/models/rating_dto.dart';
 import 'package:movielog/screens/my_ratings_screen.dart';
 import 'package:movielog/widgets/movielog_button.dart';
+import 'package:movielog/view_models/learning_member_session.dart';
 
 import 'support/movie_fakes.dart';
 import 'support/week6_fakes.dart';
@@ -22,8 +23,12 @@ MovieLogApp testApp({
   FakeMemberCheckService? checks,
   FakeRatingApiService? ratings,
   FakeTmdbService? movies,
+  bool member = false,
 }) => MovieLogApp(
   initialLocation: path,
+  learningMemberSession: member
+      ? (LearningMemberSession()..setMemberId(1))
+      : null,
   memberCheckService: checks ?? FakeMemberCheckService(),
   ratingApiService: ratings ?? FakeRatingApiService(),
   movieService: movies ?? FakeTmdbService(),
@@ -100,41 +105,40 @@ void main() {
     },
   );
 
-  testWidgets(
-    'submit needs both checks and moves home without creating an account',
-    (tester) async {
-      phoneViewport(tester);
-      final checks = FakeMemberCheckService();
-      await tester.pumpWidget(testApp(checks: checks));
+  testWidgets('submit needs both checks and creates an account', (
+    tester,
+  ) async {
+    phoneViewport(tester);
+    final checks = FakeMemberCheckService();
+    await tester.pumpWidget(testApp(checks: checks));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('signup-nickname')), '한솔');
+    await tester.enterText(
+      find.byKey(const Key('signup-email')),
+      'sol@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const Key('signup-password')),
+      'Password1!',
+    );
+    await tester.ensureVisible(find.byType(CheckboxListTile));
+    await tester.tap(find.byType(CheckboxListTile));
+    await tester.pump();
+    expect(button(tester, 'signup-submit').onPressed, isNull);
+    for (final key in ['check-nickname', 'check-email']) {
+      await tester.ensureVisible(find.byKey(Key(key)));
+      await tester.tap(find.byKey(Key(key)));
       await tester.pumpAndSettle();
-      await tester.enterText(find.byKey(const Key('signup-nickname')), '한솔');
-      await tester.enterText(
-        find.byKey(const Key('signup-email')),
-        'sol@example.com',
-      );
-      await tester.enterText(
-        find.byKey(const Key('signup-password')),
-        'password123',
-      );
-      await tester.ensureVisible(find.byType(CheckboxListTile));
-      await tester.tap(find.byType(CheckboxListTile));
-      await tester.pump();
-      expect(button(tester, 'signup-submit').onPressed, isNull);
-      for (final key in ['check-nickname', 'check-email']) {
-        await tester.ensureVisible(find.byKey(Key(key)));
-        await tester.tap(find.byKey(Key(key)));
-        await tester.pumpAndSettle();
-      }
-      expect(button(tester, 'signup-submit').onPressed, isNotNull);
-      await tester.ensureVisible(find.byKey(const Key('signup-submit')));
-      await tester.tap(find.byKey(const Key('signup-submit')));
-      await tester.pumpAndSettle();
-      expect(find.byType(NavigationBar), findsOneWidget);
-      expect(checks.nicknames, ['한솔']);
-      expect(checks.emails, ['sol@example.com']);
-      expect(tester.takeException(), isNull);
-    },
-  );
+    }
+    expect(button(tester, 'signup-submit').onPressed, isNotNull);
+    await tester.ensureVisible(find.byKey(const Key('signup-submit')));
+    await tester.tap(find.byKey(const Key('signup-submit')));
+    await tester.pumpAndSettle();
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(checks.nicknames, ['한솔']);
+    expect(checks.emails, ['sol@example.com']);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     '320px signup remains scrollable with keyboard and server errors',
@@ -168,7 +172,9 @@ void main() {
     (tester) async {
       phoneViewport(tester);
       final ratings = FakeRatingApiService();
-      await tester.pumpWidget(testApp(path: '/my', ratings: ratings));
+      await tester.pumpWidget(
+        testApp(path: '/my', ratings: ratings, member: true),
+      );
       await tester.pumpAndSettle();
       expect(find.byType(NavigationBar), findsOneWidget);
       await tester.ensureVisible(find.text('내가 등록한 평점'));
@@ -176,7 +182,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(MyRatingsScreen), findsOneWidget);
       expect(find.byType(NavigationBar), findsNothing);
-      expect(find.text('학습용 회원 #1의 공개 평점입니다.'), findsOneWidget);
+      expect(find.text('학습용 회원 #1의 평점입니다.'), findsOneWidget);
       expect(ratings.memberIds, [1]);
       await tester.tap(find.byType(BackButton));
       await tester.pumpAndSettle();
@@ -195,7 +201,12 @@ void main() {
     final movies = FakeTmdbService()
       ..onDetail = (_) => throw testHttpError(status: 404);
     await tester.pumpWidget(
-      testApp(path: '/my/ratings', ratings: ratings, movies: movies),
+      testApp(
+        path: '/my/ratings',
+        ratings: ratings,
+        movies: movies,
+        member: true,
+      ),
     );
     await tester.pump();
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -213,8 +224,8 @@ void main() {
     expect(find.text('TMDB ID 550'), findsOneWidget);
     expect(find.text('5 / 5'), findsOneWidget);
     expect(find.text('null'), findsNothing);
-    expect(find.text('수정'), findsNothing);
-    expect(find.text('삭제'), findsNothing);
+    expect(find.byTooltip('수정'), findsOneWidget);
+    expect(find.byTooltip('삭제'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

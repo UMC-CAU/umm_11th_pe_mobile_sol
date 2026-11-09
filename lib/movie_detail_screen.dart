@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import 'data/models/movie_rating_draft.dart';
 import 'movie_poster.dart';
 import 'movie_rating_input.dart';
 import 'view_models/movie_detail_view_model.dart';
@@ -20,7 +19,6 @@ class MovieDetailScreen extends StatefulWidget {
 
 class _MovieDetailScreenState extends State<MovieDetailScreen> {
   bool _favorite = false;
-  MovieRatingDraft? _myRating;
 
   void _back() {
     if (context.canPop()) {
@@ -37,20 +35,18 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   }
 
   Future<void> _rate() async {
-    final movie = context.read<MovieDetailViewModel>().movie;
-    if (movie == null) return;
-    final rating = await showDialog<MovieRatingDraft>(
+    final vm = context.read<MovieDetailViewModel>();
+    if (vm.movie == null) return;
+    final saved = await showDialog<bool>(
       context: context,
-      builder: (_) => MovieRatingInput(
-        movieId: movie.id,
-        initialRating: _myRating?.score ?? 0,
+      barrierDismissible: false,
+      builder: (_) => RatingDialog(
+        onSubmit: (score, comment) =>
+            vm.createRating(score: score, comment: comment),
       ),
     );
-    if (!mounted || rating == null) return;
-    setState(() => _myRating = rating);
-    // User data is not posted to TMDB. A future MovieLog rating API will receive
-    // rating.movieId (the DTO ID), not a grid index or a mock slug.
-    _notify('이 화면에 ${rating.score.toStringAsFixed(1)}점으로 기록했어요.');
+    if (!mounted || saved != true) return;
+    _notify('평점을 등록했습니다. 마이페이지의 내가 등록한 평점에서 확인할 수 있습니다.');
   }
 
   @override
@@ -155,16 +151,6 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                   Text('평가 ${movie.voteCount}개'),
                                 ],
                               ),
-                              if (_myRating != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 12),
-                                  child: Text(
-                                    '내 평점 ${_myRating!.score.toStringAsFixed(1)} / 5',
-                                    style: TextStyle(
-                                      color: theme.colorScheme.primary,
-                                    ),
-                                  ),
-                                ),
                               const SizedBox(height: 16),
                               Wrap(
                                 spacing: 8,
@@ -230,10 +216,12 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                         ),
                         label: Text(_favorite ? '즐겨찾기 해제' : '즐겨찾기'),
                       ),
+                      if (vm.memberId == null)
+                        const Text('평점을 남기려면 학습용 회원가입이 필요합니다.'),
                       FilledButton.icon(
-                        onPressed: _rate,
+                        onPressed: vm.memberId == null ? null : _rate,
                         icon: const Icon(Icons.rate_review_outlined),
-                        label: Text(_myRating == null ? '평점 남기기' : '평점 수정하기'),
+                        label: const Text('평점 남기기'),
                       ),
                     ],
                   ),

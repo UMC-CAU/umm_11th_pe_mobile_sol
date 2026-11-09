@@ -13,7 +13,7 @@ void main() {
     final response = Completer<List<RatingDto>>();
     final service = FakeRatingApiService()..onFetch = (_) => response.future;
     final movies = FakeTmdbService();
-    final vm = MyRatingsViewModel(service, movies, sampleMemberId);
+    final vm = MyRatingsViewModel(service, movies, 1);
     addTearDown(vm.dispose);
     final pending = vm.load();
     expect(vm.status, MyRatingsLoadStatus.loading);

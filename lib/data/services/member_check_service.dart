@@ -1,21 +1,4 @@
-import 'package:dio/dio.dart';
+// Compatibility with code written for the 6th week.
+import 'sign_up_service.dart';
 
-import '../models/check_result.dart';
-import '../models/json_values.dart';
-
-class MemberCheckService {
-  MemberCheckService(this._dio);
-  final Dio _dio;
-
-  Future<bool> checkNickname(String nickname) async {
-    final encoded = Uri.encodeComponent(nickname.trim());
-    final response = await _dio.get<dynamic>('/v5/members/nickname/$encoded');
-    return CheckResult.fromJson(jsonObject(response.data)).available;
-  }
-
-  Future<bool> checkEmail(String email) async {
-    final encoded = Uri.encodeComponent(email.trim());
-    final response = await _dio.get<dynamic>('/v5/members/email/$encoded');
-    return CheckResult.fromJson(jsonObject(response.data)).available;
-  }
-}
+typedef MemberCheckService = SignUpService;
