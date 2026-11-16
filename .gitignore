@@ -46,3 +46,8 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Personal TMDB credentials. Only the empty .env.example is committed.
+.env
+.env.*
+!.env.example

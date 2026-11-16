@@ -1,0 +1,77 @@
+{
+  "checkedAtUtc": "2026-10-30T07:28:19.450839Z",
+  "readOnly": true,
+  "nicknameAvailable": true,
+  "emailAvailable": true,
+  "memberId": 1,
+  "ratingCount": 3,
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/v5/members/nickname/sol_week6_check",
+      "status": 200,
+      "body": {
+        "available": true
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v5/members/email/sol%2Bweek6%40example.com",
+      "status": 200,
+      "body": {
+        "available": true
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v5/members/1/ratings",
+      "status": 200,
+      "body": [
+        {
+          "ratingId": 3,
+          "movieId": 13,
+          "score": 3,
+          "comment": null,
+          "createdAt": "2026-10-29T19:00:19.155Z",
+          "updatedAt": "2026-10-29T19:00:19.155Z"
+        },
+        {
+          "ratingId": 2,
+          "movieId": 680,
+          "score": 4,
+          "comment": "다시 봐도 좋다",
+          "createdAt": "2026-10-29T19:00:19.155Z",
+          "updatedAt": "2026-10-29T19:00:19.155Z"
+        },
+        {
+          "ratingId": 1,
+          "movieId": 550,
+          "score": 5,
+          "comment": "최고의 영화!",
+          "createdAt": "2026-10-29T19:00:19.155Z",
+          "updatedAt": "2026-10-29T19:00:19.155Z"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v5/members/not-a-number/ratings",
+      "status": 400,
+      "body": {
+        "message": "Validation failed (numeric string is expected)",
+        "error": "Bad Request",
+        "statusCode": 400
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v5/members/999999999/ratings",
+      "status": 404,
+      "body": {
+        "message": "존재하지 않는 유저입니다.",
+        "error": "Not Found",
+        "statusCode": 404
+      }
+    }
+  ]
+}
