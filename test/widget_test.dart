@@ -16,7 +16,7 @@ import 'package:provider/provider.dart';
 
 import 'support/movie_fakes.dart';
 import 'support/week6_fakes.dart';
-import 'package:movielog/view_models/learning_member_session.dart';
+import 'support/week8_fakes.dart';
 
 void phoneViewport(WidgetTester tester) {
   tester.view.physicalSize = const Size(393, 852);
@@ -26,28 +26,12 @@ void phoneViewport(WidgetTester tester) {
 }
 
 void main() {
-  testWidgets(
-    'original entry remains available without starting movie requests',
-    (tester) async {
-      phoneViewport(tester);
-      final service = FakeTmdbService();
-      await tester.pumpWidget(
-        MovieLogApp(
-          movieService: service,
-          genrePreferences: MemoryGenrePreferences(),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('시작하기'), findsOneWidget);
-      expect(service.popularCalls, 0);
-      expect(service.requests, isEmpty);
-      await tester.ensureVisible(find.text('시작하기'));
-      await tester.tap(find.text('시작하기'));
-      await tester.pumpAndSettle();
-      expect(find.text('로그인'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    },
-  );
+  testWidgets('signed out entry shows login without starting movie requests', (tester) async {
+    phoneViewport(tester); final service = FakeTmdbService();
+    await tester.pumpWidget(MovieLogApp(authViewModel: testAuth(signedIn: false), movieService: service, genrePreferences: MemoryGenrePreferences()));
+    await tester.pumpAndSettle(); expect(find.byKey(const Key('login-email')), findsOneWidget);
+    expect(service.popularCalls, 0); expect(service.requests, isEmpty);
+  });
 
   testWidgets(
     'list loads once, shows real IDs and keeps search/sort controls',
@@ -56,6 +40,7 @@ void main() {
       final service = FakeTmdbService();
       await tester.pumpWidget(
         MovieLogApp(
+          authViewModel: testAuth(),
           initialLocation: '/movies',
           movieService: service,
           genrePreferences: MemoryGenrePreferences(),
@@ -88,6 +73,7 @@ void main() {
         ..onDiscover = (page, ids) => pending.future;
       await tester.pumpWidget(
         MovieLogApp(
+          authViewModel: testAuth(),
           initialLocation: '/movies',
           movieService: service,
           genrePreferences: MemoryGenrePreferences(),
@@ -115,6 +101,7 @@ void main() {
       final service = FakeTmdbService();
       await tester.pumpWidget(
         MovieLogApp(
+          authViewModel: testAuth(),
           initialLocation: '/movies',
           movieService: service,
           genrePreferences: MemoryGenrePreferences(),
@@ -147,6 +134,7 @@ void main() {
       final service = FakeTmdbService();
       await tester.pumpWidget(
         MovieLogApp(
+          authViewModel: testAuth(),
           initialLocation: '/movies',
           movieService: service,
           genrePreferences: MemoryGenrePreferences(ids: [28]),
@@ -180,14 +168,12 @@ void main() {
     phoneViewport(tester);
     final movies = FakeTmdbService();
     final ratings = FakeRatingApiService();
-    final session = LearningMemberSession()..setMemberId(42);
-    addTearDown(session.dispose);
     await tester.pumpWidget(
       MovieLogApp(
         initialLocation: '/movies/98765',
         movieService: movies,
         ratingApiService: ratings,
-        learningMemberSession: session,
+        authViewModel: testAuth(),
         genrePreferences: MemoryGenrePreferences(),
       ),
     );
@@ -296,6 +282,7 @@ void main() {
       });
     await tester.pumpWidget(
       MovieLogApp(
+        authViewModel: testAuth(),
         initialLocation: '/movies/2468',
         movieService: service,
         genrePreferences: MemoryGenrePreferences(),
@@ -349,7 +336,8 @@ void main() {
     phoneViewport(tester);
     await tester.pumpWidget(
       MovieLogApp(
-        initialLocation: '/movies',
+        authViewModel: testAuth(),
+          initialLocation: '/movies',
         movieService: FakeTmdbService(),
         genrePreferences: MemoryGenrePreferences(),
       ),

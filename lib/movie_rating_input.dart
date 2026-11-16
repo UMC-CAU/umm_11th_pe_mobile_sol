@@ -45,12 +45,9 @@ class _RatingDialogState extends State<RatingDialog> {
       if (mounted) Navigator.of(context).pop(true);
     } catch (error) {
       if (!mounted) return;
-      setState(() {
-        _isSubmitting = false;
-        _errorText = error is RatingWriteException
-            ? error.message
-            : '저장하지 못했습니다. 잠시 후 다시 시도해 주세요.';
-      });
+      final message = error is RatingWriteException ? error.message : '저장하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+      setState(() { _isSubmitting = false; _errorText = message; });
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(message)));
     }
   }
 

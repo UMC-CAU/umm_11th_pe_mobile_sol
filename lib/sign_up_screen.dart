@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import 'app_colors.dart';
 import 'core/validation/sign_up_validators.dart';
 import 'data/models/create_member_request.dart';
-import 'view_models/learning_member_session.dart';
 import 'view_models/sign_up_view_model.dart';
 import 'widgets/movielog_button.dart';
 
@@ -99,8 +98,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
     if (!mounted) return;
     if (vm.submitStatus == SubmitStatus.success && vm.createdMemberId != null) {
-      context.read<LearningMemberSession>().setMemberId(vm.createdMemberId!);
-      context.go('/movies');
+      final messenger = ScaffoldMessenger.of(context);
+      context.go('/login');
+      messenger.showSnackBar(const SnackBar(content: Text('회원가입을 완료했어요. 로그인해 주세요.')));
     } else if (vm.snackbarMessage != null) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
@@ -128,7 +128,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           leading: BackButton(
             onPressed: viewModel.submitStatus == SubmitStatus.submitting
                 ? null
-                : () => context.canPop() ? context.pop() : context.go('/'),
+                : () => context.canPop() ? context.pop() : context.go('/login'),
           ),
         ),
         body: SafeArea(
@@ -489,7 +489,7 @@ class _LoginPrompt extends StatelessWidget {
         TextButton(
           onPressed: () {
             FocusScope.of(context).unfocus();
-            context.go('/home');
+            context.go('/login');
           },
           style: TextButton.styleFrom(
             foregroundColor: AppColors.primary,

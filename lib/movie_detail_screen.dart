@@ -216,10 +216,10 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                         ),
                         label: Text(_favorite ? '즐겨찾기 해제' : '즐겨찾기'),
                       ),
-                      if (vm.memberId == null)
-                        const Text('평점을 남기려면 학습용 회원가입이 필요합니다.'),
+                      if (!vm.isSignedIn)
+                        const Text('평점을 남기려면 로그인해 주세요.'),
                       FilledButton.icon(
-                        onPressed: vm.memberId == null ? null : _rate,
+                        onPressed: !vm.isSignedIn ? null : _rate,
                         icon: const Icon(Icons.rate_review_outlined),
                         label: const Text('평점 남기기'),
                       ),

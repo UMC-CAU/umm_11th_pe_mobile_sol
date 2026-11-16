@@ -2,7 +2,8 @@ import 'package:dio/dio.dart';
 
 import '../data/models/rating_request.dart';
 import '../data/services/rating_api_service.dart';
-import '../data/services/sign_up_service.dart';
+import 'auth_view_model.dart';
+import 'session_ratings.dart';
 import '../data/models/tmdb_movie_dto.dart';
 import '../data/services/tmdb_movie_service.dart';
 import 'movie_request_state.dart';
@@ -12,13 +13,16 @@ class MovieDetailViewModel extends MovieRequestViewModel {
     this._service, {
     required this.movieId,
     this.ratingService,
-    this.memberId,
+    this.auth,
+    this.sessionRatings,
     TmdbMovieDto? initialMovie,
   }) : _movie = initialMovie?.id == movieId ? initialMovie : null;
 
   final TmdbMovieService _service;
   final RatingApiService? ratingService;
-  final int? memberId;
+  final AuthViewModel? auth;
+  final SessionRatings? sessionRatings;
+  bool get isSignedIn => auth?.status == AuthStatus.signedIn;
   bool isSubmitting = false;
   bool _detailDisposed = false;
   final int? movieId;
@@ -61,29 +65,16 @@ class MovieDetailViewModel extends MovieRequestViewModel {
 
   Future<void> createRating({required int score, String? comment}) async {
     final currentMovie = _movie;
-    if (memberId == null || ratingService == null || currentMovie == null) {
-      throw const RatingWriteException('먼저 회원가입을 완료해 주세요.');
-    }
+    final auth = this.auth;
+    if (auth == null || auth.status != AuthStatus.signedIn || ratingService == null || currentMovie == null) throw const RatingWriteException('먼저 로그인해 주세요.');
     if (isSubmitting) return;
-    isSubmitting = true;
-    notifyState();
+    final version = auth.sessionVersion; isSubmitting = true; notifyState();
     try {
-      await ratingService!.createRating(
-        memberId: memberId!,
-        request: CreateRatingRequest(
-          movieId: currentMovie.id,
-          score: score,
-          comment: comment,
-        ),
-      );
-    } on DioException catch (error) {
-      throw RatingWriteException(
-        serverErrorMessage(error, fallback: '평점을 등록하지 못했습니다. 다시 시도해 주세요.'),
-      );
-    } finally {
-      isSubmitting = false;
-      if (!_detailDisposed) notifyState();
-    }
+      final rating = await ratingService!.createRating(request: CreateRatingRequest(movieId: currentMovie.id, score: score, comment: comment));
+      if (_detailDisposed || version != auth.sessionVersion || auth.status != AuthStatus.signedIn) throw const RatingWriteException('세션이 변경되어 결과를 반영하지 못했어요.');
+      sessionRatings?.add(rating, currentMovie, version);
+    } on DioException catch (error) { throw RatingWriteException(ratingErrorMessage(error)); }
+    finally { isSubmitting = false; if (!_detailDisposed) notifyState(); }
   }
 
   @override

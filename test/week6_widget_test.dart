@@ -3,13 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:movielog/app/movie_log_app.dart';
-import 'package:movielog/data/models/rating_dto.dart';
 import 'package:movielog/screens/my_ratings_screen.dart';
 import 'package:movielog/widgets/movielog_button.dart';
-import 'package:movielog/view_models/learning_member_session.dart';
 
 import 'support/movie_fakes.dart';
 import 'support/week6_fakes.dart';
+import 'support/week8_fakes.dart';
 
 void phoneViewport(WidgetTester tester, {double width = 393}) {
   tester.view.physicalSize = Size(width, 852);
@@ -26,9 +25,7 @@ MovieLogApp testApp({
   bool member = false,
 }) => MovieLogApp(
   initialLocation: path,
-  learningMemberSession: member
-      ? (LearningMemberSession()..setMemberId(1))
-      : null,
+  authViewModel: testAuth(signedIn: member),
   memberCheckService: checks ?? FakeMemberCheckService(),
   ratingApiService: ratings ?? FakeRatingApiService(),
   movieService: movies ?? FakeTmdbService(),
@@ -134,7 +131,7 @@ void main() {
     await tester.ensureVisible(find.byKey(const Key('signup-submit')));
     await tester.tap(find.byKey(const Key('signup-submit')));
     await tester.pumpAndSettle();
-    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byKey(const Key('login-email')), findsOneWidget);
     expect(checks.nicknames, ['한솔']);
     expect(checks.emails, ['sol@example.com']);
     expect(tester.takeException(), isNull);
@@ -167,66 +164,12 @@ void main() {
     },
   );
 
-  testWidgets(
-    'profile pushes ratings above tabs and back restores the profile',
-    (tester) async {
-      phoneViewport(tester);
-      final ratings = FakeRatingApiService();
-      await tester.pumpWidget(
-        testApp(path: '/my', ratings: ratings, member: true),
-      );
-      await tester.pumpAndSettle();
-      expect(find.byType(NavigationBar), findsOneWidget);
-      await tester.ensureVisible(find.text('내가 등록한 평점'));
-      await tester.tap(find.text('내가 등록한 평점'));
-      await tester.pumpAndSettle();
-      expect(find.byType(MyRatingsScreen), findsOneWidget);
-      expect(find.byType(NavigationBar), findsNothing);
-      expect(find.text('학습용 회원 #1의 평점입니다.'), findsOneWidget);
-      expect(ratings.memberIds, [1]);
-      await tester.tap(find.byType(BackButton));
-      await tester.pumpAndSettle();
-      expect(find.text('내 프로필'), findsOneWidget);
-      expect(find.byType(NavigationBar), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    },
-  );
-
-  testWidgets('ratings shows loading, error, retry, empty and success', (
-    tester,
-  ) async {
-    phoneViewport(tester);
-    final response = Completer<List<RatingDto>>();
-    final ratings = FakeRatingApiService()..onFetch = (_) => response.future;
-    final movies = FakeTmdbService()
-      ..onDetail = (_) => throw testHttpError(status: 404);
-    await tester.pumpWidget(
-      testApp(
-        path: '/my/ratings',
-        ratings: ratings,
-        movies: movies,
-        member: true,
-      ),
-    );
-    await tester.pump();
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    response.completeError(testHttpError(status: 404));
-    await tester.pumpAndSettle();
-    expect(find.text('존재하지 않는 회원입니다.'), findsOneWidget);
-    ratings.onFetch = (_) => [];
-    await tester.tap(find.text('다시 시도'));
-    await tester.pumpAndSettle();
-    expect(find.text('등록된 평점이 없어요.'), findsOneWidget);
-    ratings.onFetch = (_) => [testRating(comment: null)];
-    await tester.tap(find.text('새로고침'));
-    await tester.pumpAndSettle();
-    expect(find.text('영화 정보 없음'), findsOneWidget);
-    expect(find.text('TMDB ID 550'), findsOneWidget);
-    expect(find.text('5 / 5'), findsOneWidget);
-    expect(find.text('null'), findsNothing);
-    expect(find.byTooltip('수정'), findsOneWidget);
-    expect(find.byTooltip('삭제'), findsOneWidget);
-    expect(tester.takeException(), isNull);
+  testWidgets('profile opens current session ratings and back returns', (tester) async {
+    phoneViewport(tester); await tester.pumpWidget(testApp(path: '/my', member: true)); await tester.pumpAndSettle();
+    expect(find.byType(NavigationBar), findsOneWidget);
+    await tester.tap(find.text('이번 세션의 평점')); await tester.pumpAndSettle();
+    expect(find.byType(MyRatingsScreen), findsOneWidget); expect(find.text('이번 세션에 등록한 평점이 없어요.'), findsOneWidget);
+    await tester.tap(find.byType(BackButton)); await tester.pumpAndSettle(); expect(find.text('내 프로필'), findsOneWidget);
   });
 
   testWidgets(

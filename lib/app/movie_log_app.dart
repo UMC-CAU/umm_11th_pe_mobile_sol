@@ -5,9 +5,13 @@ import 'package:provider/provider.dart';
 import '../app_colors.dart';
 import '../core/network/movie_log_client.dart';
 import '../core/network/tmdb_client.dart';
+import '../core/storage/token_storage.dart';
+import '../data/services/auth_api_service.dart';
+import '../data/services/member_api_service.dart';
+import '../view_models/auth_view_model.dart';
+import '../view_models/session_ratings.dart';
 import '../data/local/movie_genre_preferences.dart';
 import '../data/services/sign_up_service.dart';
-import '../view_models/learning_member_session.dart';
 import '../data/services/rating_api_service.dart';
 import '../data/services/tmdb_movie_service.dart';
 import '../router/app_router.dart';
@@ -20,67 +24,63 @@ class MovieLogApp extends StatefulWidget {
     this.genrePreferences,
     this.memberCheckService,
     this.ratingApiService,
-    this.learningMemberSession,
+    this.authViewModel,
+    this.tokenStorage,
   });
   final String initialLocation;
   final TmdbMovieService? movieService;
   final MovieGenrePreferences? genrePreferences;
   final SignUpService? memberCheckService;
   final RatingApiService? ratingApiService;
-  final LearningMemberSession? learningMemberSession;
+  final AuthViewModel? authViewModel;
+  final TokenStorage? tokenStorage;
 
   @override
   State<MovieLogApp> createState() => _MovieLogAppState();
 }
 
 class _MovieLogAppState extends State<MovieLogApp> {
-  late final GoRouter _router = createAppRouter(
-    initialLocation: widget.initialLocation,
-  );
-
+  late final TokenStorage _storage;
+  late final MovieLogClient _publicClient;
+  late final ProtectedMovieLogClient _protectedClient;
+  late final TmdbClient _tmdbClient;
+  late final AuthViewModel _auth;
+  late final SessionRatings _sessionRatings;
+  late final MemberApiService _memberApi;
+  late final GoRouter _router;
+  @override
+  void initState() {
+    super.initState();
+    _storage = widget.tokenStorage ?? SecureTokenStorage();
+    _publicClient = MovieLogClient();
+    _protectedClient = ProtectedMovieLogClient(storage: _storage, sessionVersion: () => _auth.sessionVersion, expireSession: (version) => _auth.expireSession(version));
+    _tmdbClient = TmdbClient();
+    _memberApi = MemberApiService(_protectedClient.dio);
+    _auth = widget.authViewModel ?? AuthViewModel(AuthApiService(_publicClient.dio), _memberApi, _storage);
+    _sessionRatings = SessionRatings(_auth);
+    _router = createAppRouter(initialLocation: widget.initialLocation, auth: _auth);
+    if (widget.authViewModel == null) _auth.restoreSession();
+  }
   @override
   void dispose() {
-    _router.dispose();
+    _router.dispose(); _sessionRatings.dispose();
+    if (widget.authViewModel == null) _auth.dispose();
+    _publicClient.close(); _protectedClient.close(); _tmdbClient.close();
     super.dispose();
   }
-
   @override
-  Widget build(BuildContext context) => MultiProvider(
-    providers: [
-      if (widget.learningMemberSession == null)
-        ChangeNotifierProvider<LearningMemberSession>(
-          create: (_) => LearningMemberSession(),
-        )
-      else
-        ChangeNotifierProvider<LearningMemberSession>.value(
-          value: widget.learningMemberSession!,
-        ),
-      Provider<TmdbClient>(
-        create: (_) => TmdbClient(),
-        dispose: (_, client) => client.close(),
-      ),
-      Provider<MovieLogClient>(
-        create: (_) => MovieLogClient(),
-        dispose: (_, client) => client.close(),
-      ),
-      Provider<TmdbMovieService>(
-        create: (context) =>
-            widget.movieService ??
-            TmdbMovieService(context.read<TmdbClient>().dio),
-      ),
-      Provider<SignUpService>(
-        create: (context) =>
-            widget.memberCheckService ??
-            SignUpService(context.read<MovieLogClient>().dio),
-      ),
-      Provider<RatingApiService>(
-        create: (context) =>
-            widget.ratingApiService ??
-            RatingApiService(context.read<MovieLogClient>().dio),
-      ),
-      Provider<MovieGenrePreferences>(
-        create: (_) => widget.genrePreferences ?? SharedMovieGenrePreferences(),
-      ),
+  Widget build(BuildContext context) => MultiProvider(providers: [
+      ChangeNotifierProvider<AuthViewModel>.value(value: _auth),
+      ChangeNotifierProvider<SessionRatings>.value(value: _sessionRatings),
+      Provider<TokenStorage>.value(value: _storage),
+      Provider<MovieLogClient>.value(value: _publicClient),
+      Provider<ProtectedMovieLogClient>.value(value: _protectedClient),
+      Provider<TmdbClient>.value(value: _tmdbClient),
+      Provider<MemberApiService>.value(value: _memberApi),
+      Provider<TmdbMovieService>(create: (_) => widget.movieService ?? TmdbMovieService(_tmdbClient.dio)),
+      Provider<SignUpService>(create: (_) => widget.memberCheckService ?? SignUpService(_publicClient.dio)),
+      Provider<RatingApiService>(create: (_) => widget.ratingApiService ?? RatingApiService(_publicClient.dio, _protectedClient.dio)),
+      Provider<MovieGenrePreferences>(create: (_) => widget.genrePreferences ?? SharedMovieGenrePreferences()),
     ],
     child: MaterialApp.router(
       debugShowCheckedModeBanner: false,

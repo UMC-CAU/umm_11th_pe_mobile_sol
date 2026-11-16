@@ -63,32 +63,17 @@ class FakeRatingApiService implements RatingApiService {
   final created = <CreateRatingRequest>[];
   final deleted = <int>[];
   @override
-  Future<void> createRating({
-    required int memberId,
-    required CreateRatingRequest request,
-  }) async {
-    created.add(request);
-    await onCreate?.call(memberId, request);
+  Future<RatingDto> createRating({required CreateRatingRequest request}) async {
+    created.add(request); await onCreate?.call(0, request);
+    return RatingDto(ratingId: created.length, movieId: request.movieId, score: request.score, comment: request.comment, createdAt: DateTime.utc(2026, 10, 30));
   }
-
   @override
-  Future<void> updateRating({
-    required int memberId,
-    required int ratingId,
-    required int score,
-    String? comment,
-  }) async {
-    await onUpdate?.call(memberId, ratingId, score, comment);
+  Future<RatingDto> updateRating({required int ratingId, required int score, String? comment}) async {
+    await onUpdate?.call(0, ratingId, score, comment);
+    return RatingDto(ratingId: ratingId, movieId: 550, score: score, comment: comment, createdAt: DateTime.utc(2026, 10, 30));
   }
-
   @override
-  Future<void> deleteRating({
-    required int memberId,
-    required int ratingId,
-  }) async {
-    deleted.add(ratingId);
-    await onDelete?.call(memberId, ratingId);
-  }
+  Future<void> deleteRating({required int ratingId}) async { deleted.add(ratingId); await onDelete?.call(0, ratingId); }
 
   @override
   Future<List<RatingDto>> fetchMyRatings(int memberId) async {

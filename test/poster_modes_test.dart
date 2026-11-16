@@ -8,6 +8,7 @@ import 'package:movielog/view_models/movie_request_state.dart';
 import 'package:provider/provider.dart';
 
 import 'support/movie_fakes.dart';
+import 'support/week8_fakes.dart';
 
 void main() {
   testWidgets(
@@ -122,6 +123,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
       MovieLogApp(
+        authViewModel: testAuth(),
         initialLocation: '/movies',
         movieService: FakeTmdbService(),
         genrePreferences: MemoryGenrePreferences(),
