@@ -12,14 +12,24 @@ class MainTabScreen extends StatefulWidget {
   final String location;
   final Widget child;
 
-  @override State<MainTabScreen> createState() => _MainTabScreenState();
+  @override
+  State<MainTabScreen> createState() => _MainTabScreenState();
 }
+
 class _MainTabScreenState extends State<MainTabScreen> {
-  @override void initState() { super.initState(); WidgetsBinding.instance.addPostFrameCallback((_) { if (mounted) context.read<AuthViewModel>().loadMember(); }); }
-  @override Widget build(BuildContext context) {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<AuthViewModel>().loadMember();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final selectedIndex = switch (widget.location) {
-      '/movies' => 1,
-      '/my' => 2,
+      final path when path == '/movies' || path.startsWith('/movies/') => 1,
+      final path when path == '/my' || path.startsWith('/my/') => 2,
       _ => 0,
     };
 

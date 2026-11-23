@@ -1,7 +1,7 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-/// The workbook v5 host is independent from TMDB and does not need a token.
 abstract final class MovieLogConfig {
+  static const apiPrefix = '/v8';
   static const workbookBaseUrl = 'https://workbook.devnoco.com';
 
   static String get baseUrl {

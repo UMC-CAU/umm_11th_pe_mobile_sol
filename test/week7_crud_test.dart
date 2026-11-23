@@ -49,7 +49,7 @@ void main() {
         ),
       );
       expect(response.result!.memberId, 37);
-      expect(adapter.requests.single.path, '/v6/members');
+      expect(adapter.requests.single.path, '/v8/members');
       expect(adapter.requests.single.data, {
         'email': 'a@b.com',
         'nickname': '한솔',
@@ -58,25 +58,56 @@ void main() {
     },
   );
 
-  test('v7 ratings use movieId, return objects, and delete with a 200 wrapper', () async {
-    final dio = Dio(BaseOptions(baseUrl: 'https://example.com'));
-    addTearDown(() => dio.close(force: true));
-    final adapter = CapturingAdapter()..status = 201..body = {
-      'isSuccess': true, 'code': 'OK', 'message': 'ok',
-      'result': {'ratingId': 12, 'movieId': 550, 'score': 5, 'comment': '재밌다', 'createdAt': '2026-11-01T00:00:00Z'},
-    };
-    dio.httpClientAdapter = adapter;
-    final service = RatingApiService(dio, dio);
-    final created = await service.createRating(request: const CreateRatingRequest(movieId: 550, score: 5, comment: ' 재밌다 '));
-    expect(created.ratingId, 12); expect(adapter.requests.last.path, '/v7/ratings');
-    expect(adapter.requests.last.data, {'movieId': 550, 'score': 5, 'comment': '재밌다'});
-    adapter.status = 200;
-    await service.updateRating(ratingId: 12, score: 4, comment: null);
-    expect(adapter.requests.last.path, '/v7/ratings/12'); expect(adapter.requests.last.data, {'score': 4, 'comment': null});
-    adapter.body = {'isSuccess': true, 'code': 'OK', 'message': 'ok', 'result': null};
-    await service.deleteRating(ratingId: 12); expect(adapter.requests.last.method, 'DELETE');
-    expect(() => validateServerScore(3.5), throwsArgumentError);
-  });
+  test(
+    'v8 ratings use movieId, return objects, and delete with a 200 wrapper',
+    () async {
+      final dio = Dio(BaseOptions(baseUrl: 'https://example.com'));
+      addTearDown(() => dio.close(force: true));
+      final adapter = CapturingAdapter()
+        ..status = 201
+        ..body = {
+          'isSuccess': true,
+          'code': 'OK',
+          'message': 'ok',
+          'result': {
+            'ratingId': 12,
+            'movieId': 550,
+            'score': 5,
+            'comment': '재밌다',
+            'createdAt': '2026-11-01T00:00:00Z',
+          },
+        };
+      dio.httpClientAdapter = adapter;
+      final service = RatingApiService(dio, dio);
+      final created = await service.createRating(
+        request: const CreateRatingRequest(
+          movieId: 550,
+          score: 5,
+          comment: ' 재밌다 ',
+        ),
+      );
+      expect(created.ratingId, 12);
+      expect(adapter.requests.last.path, '/v8/ratings');
+      expect(adapter.requests.last.data, {
+        'movieId': 550,
+        'score': 5,
+        'comment': '재밌다',
+      });
+      adapter.status = 200;
+      await service.updateRating(ratingId: 12, score: 4, comment: null);
+      expect(adapter.requests.last.path, '/v8/ratings/12');
+      expect(adapter.requests.last.data, {'score': 4, 'comment': null});
+      adapter.body = {
+        'isSuccess': true,
+        'code': 'OK',
+        'message': 'ok',
+        'result': null,
+      };
+      await service.deleteRating(ratingId: 12);
+      expect(adapter.requests.last.method, 'DELETE');
+      expect(() => validateServerScore(3.5), throwsArgumentError);
+    },
+  );
 
   test('signup separates password 400 and duplicate 409', () async {
     final service = FakeMemberCheckService();
@@ -101,5 +132,4 @@ void main() {
     expect(vm.passwordErrorText, isNull);
     expect(vm.snackbarMessage, '이미 사용 중인 이메일입니다.');
   });
-
 }

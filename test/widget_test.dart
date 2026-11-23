@@ -15,6 +15,7 @@ import 'package:movielog/view_models/movie_list_view_model.dart';
 import 'package:provider/provider.dart';
 
 import 'support/movie_fakes.dart';
+import 'support/favorite_fixture.dart';
 import 'support/week6_fakes.dart';
 import 'support/week8_fakes.dart';
 
@@ -26,15 +27,26 @@ void phoneViewport(WidgetTester tester) {
 }
 
 void main() {
-  testWidgets('signed out entry shows login without starting movie requests', (tester) async {
-    phoneViewport(tester); final service = FakeTmdbService();
-    await tester.pumpWidget(MovieLogApp(authViewModel: testAuth(signedIn: false), movieService: service, genrePreferences: MemoryGenrePreferences()));
-    await tester.pumpAndSettle(); expect(find.byKey(const Key('login-email')), findsOneWidget);
-    expect(service.popularCalls, 0); expect(service.requests, isEmpty);
+  testWidgets('signed out entry shows login without starting movie requests', (
+    tester,
+  ) async {
+    phoneViewport(tester);
+    final service = FakeTmdbService();
+    await tester.pumpWidget(
+      MovieLogApp(
+        authViewModel: testAuth(signedIn: false),
+        movieService: service,
+        genrePreferences: MemoryGenrePreferences(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('login-email')), findsOneWidget);
+    expect(service.popularCalls, 0);
+    expect(service.requests, isEmpty);
   });
 
   testWidgets(
-    'list loads once, shows real IDs and keeps search/sort controls',
+    'movie search requests TMDB only on submission and opens movie details',
     (tester) async {
       phoneViewport(tester);
       final service = FakeTmdbService();
@@ -44,6 +56,7 @@ void main() {
           initialLocation: '/movies',
           movieService: service,
           genrePreferences: MemoryGenrePreferences(),
+          favoriteApiService: FavoriteFixture({}),
         ),
       );
       await tester.pumpAndSettle();
@@ -51,48 +64,53 @@ void main() {
       expect(find.text('영화 101'), findsOneWidget);
       expect(service.genreCalls, 1);
       expect(service.requests.length, 1);
-      await tester.pump();
-      expect(service.requests.length, 1);
       await tester.tap(find.byTooltip('영화 검색'));
       await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField), '202');
+      expect(find.byType(NavigationBar), findsNothing);
+      await tester.enterText(find.byType(TextField), ' 202 ');
+      await tester.pump();
+      expect(service.searchRequests, isEmpty);
+      await tester.testTextInput.receiveAction(TextInputAction.search);
       await tester.pumpAndSettle();
       expect(find.text('영화 101'), findsNothing);
       expect(find.text('영화 202'), findsOneWidget);
+      expect(service.searchRequests.single, (query: '202', page: 1));
       expect(service.requests.length, 1);
-      expect(tester.takeException(), isNull);
+      await tester.tap(find.text('영화 202'));
+      await tester.pumpAndSettle();
+      expect(service.detailIds, [202]);
+      await tester.tap(find.byTooltip('뒤로 가기'));
+      await tester.pumpAndSettle();
+      expect(find.text('영화 202'), findsOneWidget);
     },
   );
 
-  testWidgets(
-    'loading disables genre selection and pull to refresh duplication',
-    (tester) async {
-      phoneViewport(tester);
-      final pending = Completer<TmdbMoviePageDto>();
-      final service = FakeTmdbService()
-        ..onDiscover = (page, ids) => pending.future;
-      await tester.pumpWidget(
-        MovieLogApp(
-          authViewModel: testAuth(),
-          initialLocation: '/movies',
-          movieService: service,
-          genrePreferences: MemoryGenrePreferences(),
-        ),
-      );
-      await tester.pump();
-      for (final chip in tester.widgetList<ChoiceChip>(
-        find.byType(ChoiceChip),
-      )) {
-        expect(chip.onSelected, isNull);
-      }
-      await tester.drag(find.byType(CustomScrollView), const Offset(0, 300));
-      await tester.pump();
-      expect(service.requests.length, 1);
-      pending.complete(testPage([55]));
-      await tester.pumpAndSettle();
-      expect(find.text('영화 55'), findsOneWidget);
-    },
-  );
+  testWidgets('genre selection stays available during a pending first page', (
+    tester,
+  ) async {
+    phoneViewport(tester);
+    final pending = Completer<TmdbMoviePageDto>();
+    final service = FakeTmdbService()
+      ..onDiscover = (page, ids) =>
+          ids == null ? pending.future : testPage([55]);
+    await tester.pumpWidget(
+      MovieLogApp(
+        authViewModel: testAuth(),
+        initialLocation: '/movies',
+        movieService: service,
+        genrePreferences: MemoryGenrePreferences(),
+      ),
+    );
+    await tester.pump();
+    expect(service.requests.length, 1);
+    await tester.tap(find.widgetWithText(ChoiceChip, '액션'));
+    await tester.pumpAndSettle();
+    expect(service.requests.last.ids, [28]);
+    pending.complete(testPage([999]));
+    await tester.pumpAndSettle();
+    expect(find.text('영화 55'), findsOneWidget);
+    expect(find.text('영화 999'), findsNothing);
+  });
 
   testWidgets(
     'genre sheet confirms multi selection and cancel sends no request',
@@ -127,40 +145,35 @@ void main() {
     },
   );
 
-  testWidgets(
-    'refresh failure dialog retains list; cancel then retry succeeds',
-    (tester) async {
-      phoneViewport(tester);
-      final service = FakeTmdbService();
-      await tester.pumpWidget(
-        MovieLogApp(
-          authViewModel: testAuth(),
-          initialLocation: '/movies',
-          movieService: service,
-          genrePreferences: MemoryGenrePreferences(ids: [28]),
-        ),
-      );
-      await tester.pumpAndSettle();
-      final vm = tester
-          .element(find.byType(MoviesScreen))
-          .read<MovieListViewModel>();
-      service.onDiscover = (page, ids) =>
-          throw StateError('Network unavailable');
-      await vm.refresh();
-      await tester.pumpAndSettle();
-      expect(find.byType(AlertDialog), findsOneWidget);
-      expect(find.text('영화 101'), findsOneWidget);
-      await tester.tap(find.text('취소'));
-      await tester.pumpAndSettle();
-      expect(find.byType(AlertDialog), findsNothing);
-      service.onDiscover = (page, ids) => testPage([303]);
-      await tester.tap(find.text('재시도'));
-      await tester.pumpAndSettle();
-      expect(service.requests.last.ids, [28]);
-      expect(find.text('영화 303'), findsOneWidget);
-      expect(find.text('영화 101'), findsNothing);
-    },
-  );
+  testWidgets('failed first page shows retry for the selected genre', (
+    tester,
+  ) async {
+    phoneViewport(tester);
+    final service = FakeTmdbService();
+    await tester.pumpWidget(
+      MovieLogApp(
+        authViewModel: testAuth(),
+        initialLocation: '/movies',
+        movieService: service,
+        genrePreferences: MemoryGenrePreferences(ids: [28]),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final vm = tester
+        .element(find.byType(MoviesScreen))
+        .read<MovieListViewModel>();
+    service.onDiscover = (page, ids) => throw StateError('Network unavailable');
+    await vm.refresh();
+    await tester.pumpAndSettle();
+    expect(find.text('영화 101'), findsNothing);
+    expect(find.text('다시 시도'), findsOneWidget);
+    service.onDiscover = (page, ids) => testPage([303]);
+    await tester.tap(find.text('다시 시도'));
+    await tester.pumpAndSettle();
+    expect(service.requests.last.ids, [28]);
+    expect(find.text('영화 303'), findsOneWidget);
+    expect(find.text('영화 101'), findsNothing);
+  });
 
   testWidgets('numeric deep link passes the TMDB ID to the rating service', (
     tester,
@@ -173,6 +186,7 @@ void main() {
         initialLocation: '/movies/98765',
         movieService: movies,
         ratingApiService: ratings,
+        favoriteApiService: FavoriteFixture({}),
         authViewModel: testAuth(),
         genrePreferences: MemoryGenrePreferences(),
       ),
@@ -284,6 +298,7 @@ void main() {
       MovieLogApp(
         authViewModel: testAuth(),
         initialLocation: '/movies/2468',
+        favoriteApiService: FavoriteFixture({}),
         movieService: service,
         genrePreferences: MemoryGenrePreferences(),
       ),
@@ -337,7 +352,7 @@ void main() {
     await tester.pumpWidget(
       MovieLogApp(
         authViewModel: testAuth(),
-          initialLocation: '/movies',
+        initialLocation: '/movies',
         movieService: FakeTmdbService(),
         genrePreferences: MemoryGenrePreferences(),
       ),

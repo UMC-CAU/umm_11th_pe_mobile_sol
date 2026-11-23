@@ -4,7 +4,7 @@ import 'package:movielog/movie_poster.dart';
 import 'package:movielog/app/movie_log_app.dart';
 import 'package:movielog/movies_screen.dart';
 import 'package:movielog/view_models/movie_list_view_model.dart';
-import 'package:movielog/view_models/movie_request_state.dart';
+import 'package:movielog/view_models/load_phase.dart';
 import 'package:provider/provider.dart';
 
 import 'support/movie_fakes.dart';
@@ -137,7 +137,7 @@ void main() {
     final vm = tester
         .element(find.byType(MoviesScreen))
         .read<MovieListViewModel>();
-    expect(vm.status, MovieLoadStatus.success);
+    expect(vm.phase, LoadPhase.ready);
     expect(vm.movies.length, 2);
     expect(find.text('영화 2편'), findsOneWidget);
     expect(find.byType(AlertDialog), findsNothing);

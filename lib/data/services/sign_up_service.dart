@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 
+import '../../core/config/movie_log_config.dart';
+
 import '../models/check_result.dart';
 import '../models/common_response.dart';
 import '../models/create_member_request.dart';
@@ -11,14 +13,14 @@ class SignUpService {
 
   Future<bool> checkNickname(String nickname) async {
     final response = await _dio.get<dynamic>(
-      '/v6/members/nickname/${Uri.encodeComponent(nickname.trim())}',
+      '${MovieLogConfig.apiPrefix}/members/nickname/${Uri.encodeComponent(nickname.trim())}',
     );
     return CheckResult.fromJson(jsonObject(response.data)).available;
   }
 
   Future<bool> checkEmail(String email) async {
     final response = await _dio.get<dynamic>(
-      '/v6/members/email/${Uri.encodeComponent(email.trim())}',
+      '${MovieLogConfig.apiPrefix}/members/email/${Uri.encodeComponent(email.trim())}',
     );
     return CheckResult.fromJson(jsonObject(response.data)).available;
   }
@@ -27,7 +29,7 @@ class SignUpService {
     CreateMemberRequest request,
   ) async {
     final response = await _dio.post<dynamic>(
-      '/v6/members',
+      '${MovieLogConfig.apiPrefix}/members',
       data: request.toJson(),
     );
     if (response.statusCode != 201) {

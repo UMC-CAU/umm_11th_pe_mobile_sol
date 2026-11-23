@@ -6,6 +6,7 @@ import 'package:movielog/view_models/movie_detail_view_model.dart';
 import 'package:movielog/view_models/movie_home_view_model.dart';
 import 'package:movielog/view_models/movie_list_view_model.dart';
 import 'package:movielog/view_models/movie_request_state.dart';
+import 'package:movielog/view_models/load_phase.dart';
 
 import 'support/movie_fakes.dart';
 
@@ -41,7 +42,7 @@ void main() {
   });
 
   test(
-    'nonstandard page sizes and overlaps produce thirty unique IDs',
+    'first page loads independently and pagination deduplicates beyond thirty',
     () async {
       final service = FakeTmdbService()
         ..onDiscover = (page, ids) => switch (page) {
@@ -59,30 +60,33 @@ void main() {
         };
       final vm = MovieListViewModel(service, MemoryGenrePreferences());
       await vm.load();
+      expect(service.requests.map((request) => request.page), [1]);
+      expect(vm.movies.length, 12);
+      await vm.loadNextPage();
+      await vm.loadNextPage();
       expect(service.requests.map((request) => request.page), [1, 2, 3]);
-      expect(vm.movies.length, 30);
-      expect(vm.movies.map((movie) => movie.id).toSet().length, 30);
-      expect(vm.movies.last.id, 30);
+      expect(
+        vm.movies.map((movie) => movie.id),
+        List.generate(40, (i) => i + 1),
+      );
       vm.dispose();
     },
   );
 
-  test(
-    'fewer than thirty is success; an empty page stops pagination',
-    () async {
-      final service = FakeTmdbService()
-        ..onDiscover = (page, ids) => testPage([1, 2, 3]);
-      final vm = MovieListViewModel(service, MemoryGenrePreferences());
-      await vm.load();
-      expect(vm.status, MovieLoadStatus.success);
-      expect(vm.movies.length, 3);
-      service.onDiscover = (page, ids) => testPage([], totalPages: 100);
-      await vm.refresh();
-      expect(vm.status, MovieLoadStatus.empty);
-      expect(service.requests.length, 2);
-      vm.dispose();
-    },
-  );
+  test('last page and an empty first page both stop pagination', () async {
+    final service = FakeTmdbService()
+      ..onDiscover = (page, ids) => testPage([1, 2, 3]);
+    final vm = MovieListViewModel(service, MemoryGenrePreferences());
+    await vm.load();
+    expect(vm.phase, LoadPhase.ready);
+    expect(vm.movies.length, 3);
+    expect(vm.hasMore, isFalse);
+    service.onDiscover = (page, ids) => testPage([], totalPages: 100);
+    await vm.refresh();
+    expect(vm.phase, LoadPhase.empty);
+    expect(service.requests.length, 2);
+    vm.dispose();
+  });
 
   test(
     'restore valid IDs; selecting genres starts from page one and does not locally filter',
@@ -119,54 +123,58 @@ void main() {
     vm.dispose();
   });
 
-  test(
-    'loading locks filters and repeated refresh; refresh retains old movies',
-    () async {
-      final service = FakeTmdbService();
-      final vm = MovieListViewModel(service, MemoryGenrePreferences());
-      await vm.load();
-      final pending = Completer<TmdbMoviePageDto>();
-      service.onDiscover = (page, ids) => pending.future;
-      final refresh = vm.refresh();
-      expect(vm.isLoading, isTrue);
-      expect(vm.canSelectGenres, isFalse);
-      expect(vm.movies.map((movie) => movie.id), [101, 202]);
-      await vm.refresh();
-      await vm.selectGenres([28]);
-      expect(service.requests.length, 2);
-      expect(vm.selectedGenreIds, isEmpty);
-      pending.complete(testPage([303]));
-      await refresh;
-      expect(vm.movies.single.id, 303);
-      expect(vm.status, MovieLoadStatus.success);
-      vm.dispose();
-    },
-  );
+  test('a new genre supersedes a pending refresh', () async {
+    final service = FakeTmdbService();
+    final vm = MovieListViewModel(service, MemoryGenrePreferences());
+    addTearDown(vm.dispose);
+    await vm.load();
+    final pending = Completer<TmdbMoviePageDto>();
+    service.onDiscover = (page, ids) =>
+        ids == null ? pending.future : testPage([303]);
+    final refresh = vm.refresh();
+    final oldToken = service.lastCancelToken!;
+    expect(vm.phase, LoadPhase.loading);
+    expect(vm.canSelectGenres, isTrue);
+    expect(vm.movies, isEmpty);
+    await vm.refresh();
+    expect(service.requests.length, 2);
+    await vm.selectGenres([28]);
+    expect(oldToken.isCancelled, isTrue);
+    expect(service.requests.length, 3);
+    pending.complete(testPage([999]));
+    await refresh;
+    expect(vm.movies.single.id, 303);
+    expect(vm.phase, LoadPhase.ready);
+  });
 
   test(
-    'page two failure rolls back atomically; retry replays all pages and same genres',
+    'page two failure keeps page one and retries page two with the same genres',
     () async {
       final service = FakeTmdbService();
       final vm = MovieListViewModel(service, MemoryGenrePreferences());
+      addTearDown(vm.dispose);
       await vm.load();
       var shouldFail = true;
       service.onDiscover = (page, ids) {
         if (page == 2 && shouldFail) throw StateError('Offline on page two');
-        return testPage(page == 1 ? [1, 2] : [3, 4], page: page, totalPages: 2);
+        return testPage(
+          page == 1 ? [1, 2] : [2, 3, 4],
+          page: page,
+          totalPages: 2,
+        );
       };
       await vm.selectGenres([28]);
-      expect(vm.status, MovieLoadStatus.error);
-      expect(vm.movies.map((movie) => movie.id), [101, 202]);
-      expect(vm.showingPreviousGenre, isTrue);
-      expect(vm.failureVersion, 1);
+      await vm.loadNextPage();
+      expect(vm.phase, LoadPhase.ready);
+      expect(vm.movies.map((movie) => movie.id), [1, 2]);
+      expect(vm.loadMoreError, isNotNull);
       shouldFail = false;
-      await vm.retry();
-      expect(service.requests.map((request) => request.page), [1, 1, 2, 1, 2]);
+      await vm.loadNextPage();
+      expect(service.requests.map((request) => request.page), [1, 1, 2, 2]);
       expect(service.requests.last.ids, [28]);
       expect(vm.movies.map((movie) => movie.id), [1, 2, 3, 4]);
-      expect(vm.showingPreviousGenre, isFalse);
-      expect(vm.errorMessage, isNull);
-      vm.dispose();
+      expect(vm.hasMore, isFalse);
+      expect(vm.loadMoreError, isNull);
     },
   );
 
@@ -176,10 +184,10 @@ void main() {
       MemoryGenrePreferences(failRead: true, failWrite: true),
     );
     await vm.load();
-    expect(vm.status, MovieLoadStatus.success);
+    expect(vm.phase, LoadPhase.ready);
     expect(vm.preferenceMessage, isNotNull);
     await vm.selectGenres([28]);
-    expect(vm.status, MovieLoadStatus.success);
+    expect(vm.phase, LoadPhase.ready);
     await Future<void>.delayed(Duration.zero);
     expect(vm.preferenceMessage, contains('저장하지 못했어요'));
     vm.dispose();

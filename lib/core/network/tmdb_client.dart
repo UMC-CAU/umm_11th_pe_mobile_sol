@@ -18,9 +18,11 @@ class TmdbClient {
 /// their own client and authentication.
 Dio createTmdbClient({String? accessToken}) {
   final token = (accessToken ?? TmdbConfig.accessToken).trim();
+  final origin = Uri.parse(TmdbConfig.baseUrl);
   final dio = Dio(
     BaseOptions(
       baseUrl: TmdbConfig.baseUrl,
+      followRedirects: false,
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
       headers: {
@@ -35,6 +37,18 @@ Dio createTmdbClient({String? accessToken}) {
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) {
+        final uri = options.uri;
+        if (uri.scheme != origin.scheme ||
+            uri.host != origin.host ||
+            uri.port != origin.port) {
+          handler.reject(
+            DioException(
+              requestOptions: options,
+              message: 'TMDB 서버로만 영화 정보를 요청할 수 있습니다.',
+            ),
+          );
+          return;
+        }
         if (token.isEmpty) {
           handler.reject(
             DioException(

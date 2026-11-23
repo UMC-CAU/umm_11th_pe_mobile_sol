@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 
 class CapturingAdapter implements HttpClientAdapter {
   final requests = <RequestOptions>[];
+  Future<void> Function()? beforeRespond;
   int status = 200;
   Object body = {
     'page': 1,
@@ -20,6 +21,7 @@ class CapturingAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
+    await beforeRespond?.call();
     return ResponseBody.fromString(
       jsonEncode(body),
       status,

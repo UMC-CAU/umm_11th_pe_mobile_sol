@@ -117,6 +117,22 @@ void main() {
     },
   );
 
+  test('search movie forwards the query and page to TMDB', () async {
+    final dio = createTmdbClient(accessToken: 'test-tmdb-token');
+    final adapter = CapturingAdapter();
+    dio.httpClientAdapter = adapter;
+    addTearDown(dio.close);
+    await TmdbMovieService(dio).searchMovies(query: '별빛 & 바다', page: 2);
+    final request = adapter.requests.single;
+    expect(request.path, '/search/movie');
+    expect(request.uri.queryParameters, {
+      'query': '별빛 & 바다',
+      'page': '2',
+      'language': 'ko-KR',
+      'include_adult': 'false',
+    });
+  });
+
   test('disabled logging writes nothing for success or error', () async {
     final messages = <String>[];
     final dio = Dio(BaseOptions(baseUrl: TmdbConfig.baseUrl));

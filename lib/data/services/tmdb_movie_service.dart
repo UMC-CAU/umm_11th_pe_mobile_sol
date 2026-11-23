@@ -45,6 +45,24 @@ class TmdbMovieService {
     return TmdbMoviePageDto.fromJson(jsonObject(response.data));
   }
 
+  Future<TmdbMoviePageDto> searchMovies({
+    required String query,
+    int page = 1,
+    CancelToken? cancelToken,
+  }) async {
+    final response = await _dio.get<dynamic>(
+      '/search/movie',
+      queryParameters: {
+        'query': query,
+        'language': TmdbConfig.language,
+        'page': page,
+        'include_adult': false,
+      },
+      cancelToken: cancelToken,
+    );
+    return TmdbMoviePageDto.fromJson(jsonObject(response.data));
+  }
+
   Future<List<TmdbGenreDto>> fetchGenres({CancelToken? cancelToken}) async {
     final response = await _dio.get<dynamic>(
       '/genre/movie/list',

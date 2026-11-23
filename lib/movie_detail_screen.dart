@@ -7,6 +7,7 @@ import 'movie_poster.dart';
 import 'movie_rating_input.dart';
 import 'view_models/movie_detail_view_model.dart';
 import 'view_models/movie_request_state.dart';
+import 'widgets/favorite_button.dart';
 import 'widgets/movie_metadata.dart';
 import 'widgets/movie_states.dart';
 
@@ -18,8 +19,6 @@ class MovieDetailScreen extends StatefulWidget {
 }
 
 class _MovieDetailScreenState extends State<MovieDetailScreen> {
-  bool _favorite = false;
-
   void _back() {
     if (context.canPop()) {
       context.pop();
@@ -89,10 +88,30 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
             ? vm.status == MovieLoadStatus.loading ||
                       vm.status == MovieLoadStatus.idle
                   ? const MovieLoadingWidget()
-                  : MovieErrorWidget(
-                      message: vm.errorMessage,
-                      onRetry: () =>
-                          context.read<MovieDetailViewModel>().load(),
+                  : Column(
+                      children: [
+                        if ((vm.movieId ?? 0) > 0)
+                          Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '영화 #${vm.movieId}',
+                                    style: theme.textTheme.headlineSmall,
+                                  ),
+                                ),
+                                const FavoriteButton(),
+                              ],
+                            ),
+                          ),
+                        Expanded(
+                          child: MovieErrorWidget(
+                            message: vm.errorMessage,
+                            onRetry: vm.load,
+                          ),
+                        ),
+                      ],
                     )
             : SafeArea(
                 top: false,
@@ -127,13 +146,31 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                movie.title,
-                                style: theme.textTheme.headlineLarge,
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          movie.title,
+                                          style: theme.textTheme.headlineLarge,
+                                        ),
+                                        if (movieMetadata(
+                                          movie,
+                                        ).isNotEmpty) ...[
+                                          const SizedBox(height: 8),
+                                          Text(movieMetadata(movie)),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  const FavoriteButton(),
+                                ],
                               ),
-                              const SizedBox(height: 8),
-                              if (movieMetadata(movie).isNotEmpty)
-                                Text(movieMetadata(movie)),
                               const SizedBox(height: 20),
                               Wrap(
                                 spacing: 8,
@@ -204,20 +241,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                     spacing: 12,
                     runSpacing: 8,
                     children: [
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          setState(() => _favorite = !_favorite);
-                          _notify(
-                            _favorite ? '이 화면에서 즐겨찾기에 추가했어요.' : '즐겨찾기에서 삭제했어요.',
-                          );
-                        },
-                        icon: Icon(
-                          _favorite ? Icons.bookmark : Icons.bookmark_border,
-                        ),
-                        label: Text(_favorite ? '즐겨찾기 해제' : '즐겨찾기'),
-                      ),
-                      if (!vm.isSignedIn)
-                        const Text('평점을 남기려면 로그인해 주세요.'),
+                      if (!vm.isSignedIn) const Text('평점을 남기려면 로그인해 주세요.'),
                       FilledButton.icon(
                         onPressed: !vm.isSignedIn ? null : _rate,
                         icon: const Icon(Icons.rate_review_outlined),

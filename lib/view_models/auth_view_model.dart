@@ -48,7 +48,6 @@ class AuthViewModel extends ChangeNotifier {
     _notify();
     String? token;
     try {
-      await _storage.saveAccessToken('invalid-token-test');
       token = await _storage.readAccessToken();
     } catch (_) {
       if (!_current(version)) return;
@@ -90,8 +89,9 @@ class AuthViewModel extends ChangeNotifier {
     if (_disposed ||
         storageCleanupInProgress ||
         storageCleanupFailed ||
-        status == AuthStatus.authenticating)
+        status == AuthStatus.authenticating) {
       return;
+    }
     final version = ++_version;
     status = AuthStatus.authenticating;
     member = null;
@@ -145,8 +145,9 @@ class AuthViewModel extends ChangeNotifier {
     if (_disposed ||
         status != AuthStatus.signedIn ||
         memberStatus == MemberLoadStatus.loading ||
-        (member != null && !force))
+        (member != null && !force)) {
       return;
+    }
     final version = _version;
     memberStatus = MemberLoadStatus.loading;
     _notify();

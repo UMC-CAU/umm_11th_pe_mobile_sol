@@ -62,11 +62,13 @@ class MemoryGenrePreferences implements MovieGenrePreferences {
 class FakeTmdbService implements TmdbMovieService {
   FutureOr<TmdbMoviePageDto> Function(int page, List<int>? ids)? onDiscover;
   FutureOr<TmdbMoviePageDto> Function()? onPopular;
+  FutureOr<TmdbMoviePageDto> Function(String query, int page)? onSearch;
   FutureOr<List<TmdbGenreDto>> Function()? onGenres;
   FutureOr<TmdbMovieDto> Function(int id)? onDetail;
   int popularCalls = 0;
   int genreCalls = 0;
   final detailIds = <int>[];
+  final searchRequests = <({String query, int page})>[];
   final requests = <({int page, List<int>? ids})>[];
   CancelToken? lastCancelToken;
 
@@ -101,6 +103,18 @@ class FakeTmdbService implements TmdbMovieService {
     return onDiscover == null
         ? testPage([101, 202])
         : await onDiscover!(page, genreIds);
+  }
+
+  @override
+  Future<TmdbMoviePageDto> searchMovies({
+    required String query,
+    int page = 1,
+    CancelToken? cancelToken,
+  }) async {
+    searchRequests.add((query: query, page: page));
+    return onSearch == null
+        ? testPage([202], page: page)
+        : await onSearch!(query, page);
   }
 
   @override
